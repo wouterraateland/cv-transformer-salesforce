@@ -1,16 +1,23 @@
 <template>
   <lightning-card title="Actions">
-    <lightning-button
-      label="Send to API"
-      onclick={handleApiCall}
-      variant="brand"
-    ></lightning-button>
-    <lightning-file-upload
-      label="Upload Document"
-      name="fileUploader"
-      accept=".pdf,.doc,.docx"
-      record-id={recordId}
-      onuploadfinished={handleUploadFinished}
-    ></lightning-file-upload>
+    <lightning-layout>
+      <lightning-input
+        name="api_key"
+        label="API Key"
+        type="text"
+        placeholder="Enter API Key"
+        required
+        value={api_key}
+      ></lightning-input>
+      <lightning-button
+        label="Save"
+        onclick={apiKeySave}
+        variant="brand"
+      ></lightning-button>
+    </lightning-layout>
+    <template if:true={organization_id}>
+      <p>Organization ID {organization_id}</p>
+      <p>Candidate ID {candidate_id}</p>
+    </template>
   </lightning-card>
 </template>
