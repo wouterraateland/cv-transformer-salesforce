@@ -1,23 +1,83 @@
 <template>
-  <lightning-card title="Actions">
-    <lightning-layout>
-      <lightning-input
-        name="api_key"
-        label="API Key"
-        type="text"
-        placeholder="Enter API Key"
-        required
-        value={api_key}
-      ></lightning-input>
+  <template lwc:if={isLoading}>
+    <lightning-spinner
+      alternative-text="Loading"
+      size="large"
+    ></lightning-spinner>
+  </template>
+  <template lwc:if={isConfigure}>
+    <lightning-card title="CV-Transformer">
+      <form onsubmit={onConfigureSubmit}>
+        <lightning-layout vertical-align="end" style="gap: 1rem">
+          <lightning-input
+            label="CV-Transformer API Key"
+            name="api_key"
+            placeholder="Enter API Key"
+            required
+            type="text"
+          ></lightning-input>
+          <lightning-button
+            label="Save"
+            type="submit"
+            variant="brand"
+          ></lightning-button>
+          <template lwc:if={data.organization_id}>
+            <lightning-button
+              label="Cancel"
+              onclick={onConfigureCancel}
+              type="button"
+              variant="brand"
+            ></lightning-button>
+          </template>
+        </lightning-layout>
+      </form>
+    </lightning-card>
+  </template>
+  <template lwc:if={isEdit}>
+    <lightning-layout vertical-align="end" style="gap: 1rem">
       <lightning-button
-        label="Save"
-        onclick={apiKeySave}
+        label="Edit configuration"
+        onclick={onConfigure}
+        type="button"
         variant="brand"
       ></lightning-button>
+      <template lwc:if={data.candidate_id}>
+        <lightning-button
+          label="Export attachments"
+          onclick={onContactAttachmentsSync}
+          type="button"
+          variant="brand"
+        ></lightning-button>
+        <lightning-button
+          label="Import attachments"
+          onclick={onCandidateAttachmentsSync}
+          type="button"
+          variant="brand"
+        ></lightning-button>
+        <lightning-button
+          label="Generate PDF"
+          onclick={onPdfGenerate}
+          type="button"
+          variant="brand"
+        ></lightning-button>
+      </template>
+      <template lwc:else>
+        <lightning-button
+          label="Create candidate"
+          onclick={onCandidateCreate}
+          type="button"
+          variant="brand"
+        ></lightning-button>
+      </template>
     </lightning-layout>
-    <template if:true={organization_id}>
-      <p>Organization ID {organization_id}</p>
-      <p>Candidate ID {candidate_id}</p>
+    <template lwc:if={data.candidate_id}>
+      <iframe
+        src={iframeUrl}
+        style="border: none; width: 100%; height: calc(100vh - 240px)"
+      ></iframe>
     </template>
-  </lightning-card>
+  </template>
+  <template lwc:if={error}>
+    <p>{error}</p>
+  </template>
 </template>

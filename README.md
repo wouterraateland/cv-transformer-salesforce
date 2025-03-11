@@ -6,4 +6,3 @@
 ## Deploying a new version
 
 - `sf project deploy start`
-- `sf project deploy finish`s
