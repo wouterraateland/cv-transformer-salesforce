@@ -1,12 +1,18 @@
 {
+  "namespace": "CVTransformer",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "62.0",
   "packageDirectories": [
     {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
       "path": "force-app",
-      "default": true
+      "default": true,
+      "package": "CV-Transformer",
+      "versionDescription": ""
     }
   ],
-  "name": "cv-transformer-salesforce",
-  "namespace": "",
-  "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "62.0"
+  "packageAliases": {
+    "CV-Transformer": "0HogK00000001P7SAI"
+  }
 }

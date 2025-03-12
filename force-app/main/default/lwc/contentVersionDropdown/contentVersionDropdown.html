@@ -1,0 +1,16 @@
+<template>
+  <lightning-button-menu
+    label="Import attachment"
+    onselect={onSelect}
+    variant="container"
+  >
+    <template for:each={contentVersions} for:item="version">
+      <lightning-menu-item
+        key={version.value}
+        label={version.label}
+        value={version.value}
+      >
+      </lightning-menu-item>
+    </template>
+  </lightning-button-menu>
+</template>

@@ -201,65 +201,39 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static ResponseData attachmentsSync(Id contact_id) {
+  public static ResponseData candidateAttachCV(
+    Id contact_id,
+    Id content_version_id
+  ) {
     CVTransformerConfiguration__c config = [
       SELECT Name, api_key__c, color_scheme__c, language__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
     Contact contact = [
-      SELECT
-        cvt_id__c,
-        cvt_secret__c,
-        (SELECT ContentDocumentId FROM ContentDocumentLinks)
+      SELECT cvt_id__c, cvt_secret__c
       FROM Contact
       WHERE Id = :contact_id
       LIMIT 1
     ];
+    ContentVersion contentVersion = [
+      SELECT Title, VersionData, FileType
+      FROM ContentVersion
+      WHERE Id = :content_version_id
+      LIMIT 1
+    ];
 
-    Set<String> contentVersionFields = contentVersionFieldsList();
-
-    if (!contentVersionFields.contains('seven20__file_type__c'))
-      throw new AuraHandledException(
-        'Attachment sync only supported on Seven20 orgs'
-      );
-
-    CVTransformerCandidate candidate = candidateGet(
+    HttpResponse response = attach(
       config.api_key__c,
-      contact.cvt_id__c
+      contact.cvt_id__c,
+      'cv',
+      contentVersion
     );
-    if (candidate == null)
-      throw new AuraHandledException('Candidate not found');
-    CVTransformerCandidateAttachment candidateCV = candidate.attachments.get(
-      'cv'
-    );
-
-    List<String> contentDocumentIds = new List<String>();
-    for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
-      contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
-
-    List<ContentVersion> contentVersions = Database.query(
-      'SELECT ' +
-        String.join(contentVersionFields, ', ') +
-        ' FROM ContentVersion WHERE ContentDocumentId IN (' +
-        String.join(contentDocumentIds, ', ') +
-        ') AND IsLatest = TRUE AND seven20__file_type__c = \'CV\''
-    );
-    ContentVersion contentVersion = contentVersions[0];
-
-    if (contentVersion != null && candidateCV == null) {
-      HttpResponse response = attach(
-        config.api_key__c,
-        contact.cvt_id__c,
-        'cv',
-        contentVersion
+    Integer statusCode = response.getStatusCode();
+    if (statusCode < 200 || statusCode >= 300) {
+      throw new AuraHandledException(
+        'Could not sync attachment: ' + response.getBody()
       );
-      Integer statusCode = response.getStatusCode();
-      if (statusCode < 200 || statusCode >= 300) {
-        throw new AuraHandledException(
-          'Could not sync attachment: ' + response.getBody()
-        );
-      }
     }
 
     return new ResponseData(config, contact);

@@ -1,5 +1,5 @@
 import { LightningElement, api, track, wire } from "lwc";
-import attachmentsSync from "@salesforce/apex/CVTransformerApi.attachmentsSync";
+import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
 import candidateCreate from "@salesforce/apex/CVTransformerApi.candidateCreate";
 import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
 import candidateUnlink from "@salesforce/apex/CVTransformerApi.candidateUnlink";
@@ -180,10 +180,13 @@ export default class CVTransformer extends LightningElement {
     this.state = "edit";
   }
 
-  async onAttachmentsSync() {
+  async onAttachmentSelect(event) {
     this.state = "loading";
     try {
-      await attachmentsSync({ contact_id: this.recordId });
+      await candidateAttachCV({
+        contact_id: this.recordId,
+        content_version_id: event.detail
+      });
     } catch (error) {
       this.error = error.body.message;
     }

@@ -87,15 +87,11 @@
     <lightning-card title="CV-Transformer">
       <lightning-layout slot="actions" style="gap: 0.5rem">
         <template lwc:if={data.candidate_id}>
-          <template lwc:if={data.supports_attachment_sync}>
-            <lightning-button
-              label="Sync attachments"
-              icon-name="utility:refresh"
-              onclick={onAttachmentsSync}
-              type="button"
-              variant="container"
-            ></lightning-button>
-          </template>
+          <c-content-version-dropdown
+            record-id={recordId}
+            onselect={onAttachmentSelect}
+          >
+          </c-content-version-dropdown>
           <lightning-button-icon
             alternative-text="Unlink candidate"
             icon-name="utility:remove_link"
