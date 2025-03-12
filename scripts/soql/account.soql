@@ -3,4 +3,13 @@
 //     query text and running the command:
 //     SFDX: Execute SOQL Query with Currently Selected Text
 
-SELECT Id, Name FROM Account
+// SELECT ContentDocumentId
+// FROM ContentDocumentLink
+// WHERE LinkedEntityId = '003QH00000E9vS2YAJ'
+// ->> '069QH000005lwIgYAI'
+
+SELECT Id, seven20__file_type__c
+FROM ContentVersion
+WHERE ContentDocumentId IN ('069QH000005lwIgYAI', '069QH000005lwIgYAI')
+AND IsLatest = TRUE
+AND seven20__file_type__c = 'CV'

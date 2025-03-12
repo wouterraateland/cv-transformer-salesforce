@@ -1,0 +1,153 @@
+<template>
+  <template lwc:if={isLoading}>
+    <lightning-card>
+      <lightning-spinner
+        alternative-text="Loading"
+        class="slds-var-m-around_medium"
+        size="large"
+      ></lightning-spinner>
+    </lightning-card>
+  </template>
+  <template lwc:if={isSetup}>
+    <lightning-card title="Setup CV-Transformer">
+      <form class="slds-var-m-around_medium" onsubmit={onSetupSubmit}>
+        <lightning-layout vertical-align="end" style="gap: 0.5rem">
+          <lightning-input
+            label="CV-Transformer API Key"
+            name="api_key"
+            placeholder="Enter API Key"
+            required
+            type="text"
+          ></lightning-input>
+          <lightning-button
+            label="Save"
+            type="submit"
+            variant="brand"
+          ></lightning-button>
+          <template lwc:if={data.organization_id}>
+            <lightning-button
+              label="Cancel"
+              onclick={onSetupCancel}
+              type="button"
+              variant="container"
+            ></lightning-button>
+          </template>
+          <template lwc:else>
+            <p>
+              Don't have a CV-Transformer account yet?
+              <a
+                class="slds-text-link"
+                href="https://www.cv-transformer.com/admin"
+                target="_blank"
+              >
+                Sign-up
+              </a>
+            </p>
+          </template>
+        </lightning-layout>
+        <template lwc:if={error}>
+          <p slot="footer" class="slds-text-color_error">{error}</p>
+        </template>
+      </form>
+    </lightning-card>
+  </template>
+  <template lwc:if={isConfigure}>
+    <lightning-card title="CV-Transformer settings">
+      <lightning-button
+        label="Change API Key"
+        onclick={onSetup}
+        slot="actions"
+        type="button"
+        variant="brand"
+      ></lightning-button>
+      <lightning-radio-group
+        class="slds-var-m-around_medium"
+        label="Language"
+        onchange={onLanguageChange}
+        options={languageOptions}
+        value={languageWithDefault}
+      ></lightning-radio-group>
+      <lightning-radio-group
+        class="slds-var-m-around_medium"
+        label="Color Scheme"
+        onchange={onColorSchemeChange}
+        options={colorSchemeOptions}
+        value={colorSchemeWithDefault}
+      ></lightning-radio-group>
+      <lightning-button
+        label="Done"
+        onclick={onConfigureCancel}
+        slot="footer"
+        type="button"
+        variant="brand"
+      ></lightning-button>
+    </lightning-card>
+  </template>
+  <template lwc:if={isEdit}>
+    <lightning-card title="CV-Transformer">
+      <lightning-layout slot="actions" style="gap: 0.5rem">
+        <template lwc:if={data.candidate_id}>
+          <template lwc:if={data.supports_attachment_sync}>
+            <lightning-button
+              label="Sync attachments"
+              icon-name="utility:refresh"
+              onclick={onAttachmentsSync}
+              type="button"
+              variant="container"
+            ></lightning-button>
+          </template>
+          <lightning-button-icon
+            alternative-text="Unlink candidate"
+            icon-name="utility:remove_link"
+            onclick={onCandidateUnlink}
+            title="Unlink candidate"
+            type="button"
+            variant="container"
+          ></lightning-button-icon>
+        </template>
+        <template lwc:else>
+          <lightning-button
+            icon-name="utility:add"
+            label="New candidate"
+            onclick={onCandidateCreate}
+            type="button"
+            variant="brand"
+          ></lightning-button>
+          <lightning-button
+            icon-name="utility:chevrondown"
+            icon-position="right"
+            label="Existing candidate"
+            onclick={onCandidateSelect}
+            type="button"
+            variant="neutral"
+          ></lightning-button>
+        </template>
+        <lightning-button-icon
+          alternative-text="Configure"
+          icon-name="utility:settings"
+          onclick={onConfigure}
+          title="Configure"
+          type="button"
+          variant="container"
+        ></lightning-button-icon>
+      </lightning-layout>
+      <template lwc:if={error}>
+        <p class="slds-var-m-around_medium slds-text-color_error">{error}</p>
+      </template>
+      <template lwc:if={data.candidate_id}>
+        <iframe
+          src={iframeUrl}
+          style="
+            border-bottom: none;
+            border-inline: none;
+            border-radius: 0 0 3px 3px;
+            border-top: 1px solid var(--lwc-cardColorBorder);
+            height: calc(100vh - 240px);
+            margin-bottom: calc(-1 * var(--lwc-varSpacingSmall));
+            width: 100%;
+          "
+        ></iframe>
+      </template>
+    </lightning-card>
+  </template>
+</template>
