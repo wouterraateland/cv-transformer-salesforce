@@ -1,5 +1,5 @@
 public with sharing class CVTransformerApi {
-  public static Set<String> contentVersionFieldsList() {
+  private static Set<String> contentVersionFieldsList() {
     Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
       .get('ContentVersion')
       .getDescribe()
@@ -8,7 +8,7 @@ public with sharing class CVTransformerApi {
     return fieldMap.keySet();
   }
 
-  private static String getMimeType(String fileType) {
+  public static String getMimeType(String fileType) {
     Map<String, String> mimeMap = new Map<String, String>{
       'DOC' => 'application/msword',
       'DOCX' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -148,9 +148,8 @@ public with sharing class CVTransformerApi {
       );
       ContentVersion contentVersion = contentVersions[0];
 
-      if (contentVersion != null) {
+      if (contentVersion != null)
         attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersion);
-      }
     }
 
     return new ResponseData(config, contact);
