@@ -23,15 +23,28 @@ sf project deploy start \
 sf apex run test --result-format human --code-coverage --wait 10
 ```
 
+## View API limits
+
+```
+sf force limits api display
+```
+
 ## Updating the package
 
 - `sf package version create --path force-app --installation-key cvt1 --code-coverage`
-- `sf package version promote --package 04tgK00000009cnQAA`
-- `sf package install --package 04tgK00000009cnQAA --installation-key cvt1`
+- `sf package version promote --package 04tgK0000000Bl3QAE`
 
-## Installation on a new org
+## Installation
 
-Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK00000009cnQAA \
+Via CLI
+
+```
+sf package install --package 04tgK0000000Bl3QAE --installation-key cvt1
+```
+
+## Via browser
+
+Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK0000000Bl3QAE \
 Use password `cvt1`
 Follow the post-installation steps described here:
 https://www.cv-transformer.com/en/docs/integrations/salesforce

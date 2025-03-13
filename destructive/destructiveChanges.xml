@@ -22,7 +22,7 @@
     <name>LightningComponentBundle</name>
   </types>
   <types>
-    <members>CV_Transformer</members>
+    <members>API</members>
     <name>NamedCredential</name>
   </types>
 </Package>

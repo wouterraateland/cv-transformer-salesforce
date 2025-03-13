@@ -46,7 +46,7 @@ public with sharing class CVTransformerApi {
   @AuraEnabled
   public static String configUpsert(String api_key) {
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CV_Transformer/organizations');
+    request.setEndpoint('callout:CVTransformer__API/organizations');
     request.setMethod('GET');
     request.setHeader('Authorization', 'Bearer ' + api_key);
     request.setHeader('Content-Type', 'application/json');
@@ -108,7 +108,7 @@ public with sharing class CVTransformerApi {
       throw new AuraHandledException('Candidate already exists');
 
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CV_Transformer/candidates');
+    request.setEndpoint('callout:CVTransformer__API/candidates');
     request.setMethod('POST');
     request.setHeader('Authorization', 'Bearer ' + config.api_key__c);
     request.setHeader('Content-Type', 'application/json');
@@ -262,7 +262,7 @@ public with sharing class CVTransformerApi {
     String id
   ) {
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CV_Transformer/candidates?id=eq.' + id);
+    request.setEndpoint('callout:CVTransformer__API/candidates?id=eq.' + id);
     request.setMethod('GET');
     request.setHeader('Authorization', 'Bearer ' + api_key);
     Http http = new Http();
@@ -282,7 +282,7 @@ public with sharing class CVTransformerApi {
   ) {
     HttpRequest request = new HttpRequest();
     request.setEndpoint(
-      'callout:CV_Transformer/candidates/' +
+      'callout:CVTransformer__API/candidates/' +
         candidate_id +
         '/attach?location=' +
         location
