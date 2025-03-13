@@ -130,15 +130,16 @@ public with sharing class CVTransformerApi {
 
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
-    update contact;
 
     Set<String> contentVersionFields = contentVersionFieldsList();
 
-    if (contentVersionFields.contains('seven20__file_type__c')) {
+    if (
+      contentVersionFields.contains('seven20__file_type__c') &&
+      !contact.ContentDocumentLinks.isEmpty()
+    ) {
       List<String> contentDocumentIds = new List<String>();
       for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
         contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
-
       List<ContentVersion> contentVersions = Database.query(
         'SELECT ' +
           String.join(contentVersionFields, ', ') +
@@ -151,6 +152,8 @@ public with sharing class CVTransformerApi {
       if (contentVersion != null)
         attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersion);
     }
+
+    update contact;
 
     return new ResponseData(config, contact);
   }
