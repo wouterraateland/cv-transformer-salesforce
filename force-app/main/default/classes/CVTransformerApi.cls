@@ -310,8 +310,6 @@ public with sharing class CVTransformerApi {
     public String candidate_id;
     @AuraEnabled
     public String candidate_secret;
-    @AuraEnabled
-    public Boolean supports_attachment_sync = false;
 
     public ResponseData() {
     }
@@ -322,8 +320,6 @@ public with sharing class CVTransformerApi {
       this.language = config.language__c;
       this.candidate_id = contact.cvt_id__c;
       this.candidate_secret = contact.cvt_secret__c;
-      this.supports_attachment_sync = contentVersionFieldsList()
-        .contains('seven20__file_type__c');
     }
   }
 }
