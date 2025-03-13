@@ -3,13 +3,25 @@
 - Install `sf` CLI
 - Install `openjdk@21`
 
-## Deploying a new dev version
+## Deploying dev version
 
-- `sf project deploy start`
+```
+sf project deploy start
+```
 
-## Testing
+## Removing dev version
 
-- Run tests: `sf apex run test --result-format human --code-coverage --wait 10`
+```
+sf project deploy start \
+  --pre-destructive-changes destructive/destructiveChanges.xml \
+  --manifest destructive/package.xml
+```
+
+## Running tests
+
+```
+sf apex run test --result-format human --code-coverage --wait 10
+```
 
 ## Updating the package
 

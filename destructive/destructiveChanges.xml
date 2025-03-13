@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+  <types>
+    <members>CVTransformerApi</members>
+    <members>CVTransformerApiMock</members>
+    <members>CVTransformerApiTest</members>
+    <members>ContentVersionControllerTest</members>
+    <name>ApexClass</name>
+  </types>
+  <types>
+    <members>CVTransformerConfiguration__c.api_key__c</members>
+    <name>CustomField</name>
+  </types>
+  <types>
+    <members>CVTransformerConfiguration__c</members>
+    <name>CustomObject</name>
+  </types>
+  <types>
+    <members>contentVersionDropdown</members>
+    <members>cvTransformer</members>
+    <members>contactActions</members>
+    <name>LightningComponentBundle</name>
+  </types>
+  <types>
+    <members>CV_Transformer</members>
+    <name>NamedCredential</name>
+  </types>
+</Package>
