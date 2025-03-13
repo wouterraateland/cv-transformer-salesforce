@@ -33,3 +33,5 @@ sf apex run test --result-format human --code-coverage --wait 10
 
 Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK00000009cnQAA \
 Use password `cvt1`
+Follow the post-installation steps described here:
+https://www.cv-transformer.com/en/docs/integrations/salesforce
