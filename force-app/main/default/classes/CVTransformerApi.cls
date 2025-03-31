@@ -46,7 +46,7 @@ public with sharing class CVTransformerApi {
   @AuraEnabled
   public static String configUpsert(String api_key) {
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CVTransformer__API/organizations');
+    request.setEndpoint('callout:' + nsPrefix('API') + '/organizations');
     request.setMethod('GET');
     request.setHeader('Authorization', 'Bearer ' + api_key);
     request.setHeader('Content-Type', 'application/json');
@@ -108,7 +108,7 @@ public with sharing class CVTransformerApi {
       throw new AuraHandledException('Candidate already exists');
 
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CVTransformer__API/candidates');
+    request.setEndpoint('callout:' + nsPrefix('API') + '/candidates');
     request.setMethod('POST');
     request.setHeader('Authorization', 'Bearer ' + config.api_key__c);
     request.setHeader('Content-Type', 'application/json');
@@ -241,6 +241,88 @@ public with sharing class CVTransformerApi {
     return new ResponseData(config, contact);
   }
 
+  @AuraEnabled
+  public static String candidateExportCV(Id contact_id, String export_type) {
+    CVTransformerConfiguration__c config = [
+      SELECT Name, api_key__c, color_scheme__c, language__c
+      FROM CVTransformerConfiguration__c
+      LIMIT 1
+    ];
+    Contact contact = [
+      SELECT cvt_id__c, cvt_secret__c
+      FROM Contact
+      WHERE Id = :contact_id
+      LIMIT 1
+    ];
+    CVTransformerCandidate candidate = candidateGet(
+      config.api_key__c,
+      contact.cvt_id__c
+    );
+    if (candidate == null)
+      throw new AuraHandledException('Candidate not found');
+
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:' +
+        nsPrefix('API') +
+        '/candidates/' +
+        candidate.id +
+        '/pdf?s=' +
+        (export_type == 'anonymous'
+          ? candidate.secret_anonymous
+          : candidate.secret)
+    );
+    request.setMethod('GET');
+    Http http = new Http();
+    HttpResponse response = http.send(request);
+    if (response.getStatusCode() < 200 || response.getStatusCode() >= 300)
+      throw new AuraHandledException(
+        'Could not export CV: ' + response.getBody()
+      );
+
+    String contentType = response.getHeader('Content-Type');
+    String contentDisposition = response.getHeader('Content-Disposition');
+    String fileName = contentDisposition.replaceAll('.*filename=', '');
+    fileName = fileName.replaceAll('\"', '');
+    fileName = fileName.replaceAll(';.*', '');
+    Blob fileBody = response.getBodyAsBlob();
+
+    Set<String> contentVersionFields = contentVersionFieldsList();
+
+    // Step 1: Insert ContentVersion
+    ContentVersion contentVersion = new ContentVersion();
+    contentVersion.Title = fileName;
+    contentVersion.PathOnClient = '/' + fileName;
+    contentVersion.VersionData = fileBody;
+    contentVersion.IsMajorVersion = true;
+    if (contentVersionFields.contains('seven20__file_type__c'))
+      contentVersion.put('seven20__file_type__c', 'CV');
+    insert contentVersion;
+
+    // Step 2: Get the ContentDocumentId
+    ContentDocument contentDoc = [
+      SELECT Id
+      FROM ContentDocument
+      WHERE
+        Id IN (
+          SELECT ContentDocumentId
+          FROM ContentVersion
+          WHERE Id = :contentVersion.Id
+        )
+      LIMIT 1
+    ];
+
+    // Step 3: Link ContentDocument to Contact
+    ContentDocumentLink contentLink = new ContentDocumentLink();
+    contentLink.ContentDocumentId = contentDoc.Id;
+    contentLink.LinkedEntityId = contact_id;
+    contentLink.ShareType = 'V';
+    contentLink.Visibility = 'AllUsers';
+    insert contentLink;
+
+    return 'Ok';
+  }
+
   public class CVTransformerOrganization {
     public String id;
     public String avatar;
@@ -257,6 +339,8 @@ public with sharing class CVTransformerApi {
     public String id;
     public String organization_id;
     public String secret_editable;
+    public String secret;
+    public String secret_anonymous;
     public Map<String, CVTransformerCandidateAttachment> attachments;
   }
 
@@ -265,7 +349,9 @@ public with sharing class CVTransformerApi {
     String id
   ) {
     HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:CVTransformer__API/candidates?id=eq.' + id);
+    request.setEndpoint(
+      'callout:' + nsPrefix('API') + '/candidates?id=eq.' + id
+    );
     request.setMethod('GET');
     request.setHeader('Authorization', 'Bearer ' + api_key);
     Http http = new Http();
@@ -285,7 +371,9 @@ public with sharing class CVTransformerApi {
   ) {
     HttpRequest request = new HttpRequest();
     request.setEndpoint(
-      'callout:CVTransformer__API/candidates/' +
+      'callout:' +
+        nsPrefix('API') +
+        '/candidates/' +
         candidate_id +
         '/attach?location=' +
         location
@@ -300,6 +388,17 @@ public with sharing class CVTransformerApi {
     request.setBodyAsBlob(contentVersion.VersionData);
     Http http = new Http();
     return http.send(request);
+  }
+
+  private static String nsPrefix(String baseName) {
+    String prefixed = 'CVTransformer__' + baseName;
+    List<NamedCredential> creds = [
+      SELECT Id
+      FROM NamedCredential
+      WHERE DeveloperName = :prefixed
+      LIMIT 1
+    ];
+    return creds.isEmpty() ? baseName : prefixed;
   }
 
   public class ResponseData {

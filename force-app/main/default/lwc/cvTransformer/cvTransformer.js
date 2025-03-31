@@ -1,6 +1,7 @@
 import { LightningElement, api, track, wire } from "lwc";
 import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
 import candidateCreate from "@salesforce/apex/CVTransformerApi.candidateCreate";
+import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
 import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
 import candidateUnlink from "@salesforce/apex/CVTransformerApi.candidateUnlink";
 import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
@@ -183,10 +184,17 @@ export default class CVTransformer extends LightningElement {
   async onAttachmentSelect(event) {
     this.state = "loading";
     try {
-      await candidateAttachCV({
-        contact_id: this.recordId,
-        content_version_id: event.detail
-      });
+      if (event.detail === "regular" || event.detail === "anonymous") {
+        await candidateExportCV({
+          contact_id: this.recordId,
+          export_type: event.detail
+        });
+        window.location.reload();
+      } else
+        await candidateAttachCV({
+          contact_id: this.recordId,
+          content_version_id: event.detail
+        });
     } catch (error) {
       this.error = error.body.message;
     }

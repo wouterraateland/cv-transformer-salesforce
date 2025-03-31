@@ -1,16 +1,37 @@
 <template>
   <lightning-button-menu
-    label="Import attachment"
+    label="Sync attachments"
     onselect={onSelect}
     variant="container"
   >
+    <template lwc:if={contentVersions.length}>
+      <lightning-menu-subheader
+        label="Import into CV-Transformer"
+      ></lightning-menu-subheader>
+    </template>
     <template for:each={contentVersions} for:item="version">
       <lightning-menu-item
         key={version.value}
         label={version.label}
         value={version.value}
+        prefix-icon-name="utility:page"
       >
       </lightning-menu-item>
     </template>
+    <lightning-menu-subheader
+      label="Export transformed CV"
+    ></lightning-menu-subheader>
+    <lightning-menu-item
+      label="Regular version"
+      value="regular"
+      prefix-icon-name="utility:preview"
+    >
+    </lightning-menu-item>
+    <lightning-menu-item
+      label="Anonymous version"
+      value="anonymous"
+      prefix-icon-name="utility:hide"
+    >
+    </lightning-menu-item>
   </lightning-button-menu>
 </template>
