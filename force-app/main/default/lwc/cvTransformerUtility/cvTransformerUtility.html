@@ -1,0 +1,116 @@
+<template>
+  <template lwc:if={isLoading}>
+    <lightning-spinner
+      alternative-text="Loading"
+      class="slds-var-m-around_medium"
+      size="large"
+    ></lightning-spinner>
+  </template>
+  <template lwc:if={isSetup}>
+    <h2 class="slds-var-m-around_medium slds-text-heading_medium">
+      Setup CV-Transformer
+    </h2>
+    <form onsubmit={onSetupSubmit}>
+      <lightning-input
+        class="slds-var-m-around_medium"
+        label="CV-Transformer API Key"
+        name="api_key"
+        placeholder="Enter API Key"
+        required
+        type="text"
+      ></lightning-input>
+      <lightning-layout
+        class="slds-var-m-around_medium"
+        horizontal-align="end"
+        style="gap: 0.5rem"
+      >
+        <template lwc:if={data.organization_id}>
+          <lightning-button
+            label="Cancel"
+            onclick={onSetupCancel}
+            type="button"
+            variant="container"
+          ></lightning-button>
+        </template>
+        <lightning-button
+          label="Save"
+          type="submit"
+          variant="brand"
+        ></lightning-button>
+      </lightning-layout>
+      <template lwc:if={data.organization_id}></template>
+      <template lwc:else>
+        <p class="slds-var-m-around_medium">
+          Don't have a CV-Transformer account yet?
+          <a
+            class="slds-text-link"
+            href="https://www.cv-transformer.com/admin"
+            target="_blank"
+          >
+            Sign-up
+          </a>
+        </p>
+      </template>
+    </form>
+  </template>
+  <template lwc:if={isConfigure}>
+    <h2 class="slds-var-m-around_medium slds-text-heading_medium">
+      CV-Transformer settings
+    </h2>
+    <lightning-radio-group
+      class="slds-var-m-around_medium"
+      label="Language"
+      onchange={onLanguageChange}
+      options={languageOptions}
+      value={languageWithDefault}
+    ></lightning-radio-group>
+    <lightning-radio-group
+      class="slds-var-m-around_medium"
+      label="Color Scheme"
+      onchange={onColorSchemeChange}
+      options={colorSchemeOptions}
+      value={colorSchemeWithDefault}
+    ></lightning-radio-group>
+    <lightning-layout
+      class="slds-var-m-around_medium"
+      horizontal-align="end"
+      style="gap: 0.5rem"
+    >
+      <lightning-button
+        label="Change API Key"
+        onclick={onSetup}
+        type="button"
+        variant="neutral"
+      ></lightning-button>
+      <lightning-button
+        label="Done"
+        onclick={onConfigureCancel}
+        type="button"
+        variant="brand"
+      ></lightning-button>
+    </lightning-layout>
+  </template>
+  <template lwc:if={isEdit}>
+    <div class="slds-var-m-around_medium">
+      <lightning-file-upload
+        class="file-upload"
+        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        label="Upload CV"
+        name="cv"
+        onuploadfinished={onCvUpload}
+      ></lightning-file-upload>
+    </div>
+    <div class="slds-var-m-around_medium">
+      <lightning-button
+        icon-name="utility:settings"
+        label="Configure"
+        onclick={onConfigure}
+        type="button"
+        variant="container"
+      ></lightning-button>
+    </div>
+  </template>
+  <template lwc:if={error}>
+    <p class="slds-var-m-around_medium slds-text-color_error">{error}</p>
+  </template>
+</template>

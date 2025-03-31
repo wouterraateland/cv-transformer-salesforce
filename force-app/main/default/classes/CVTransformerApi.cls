@@ -1,4 +1,186 @@
 public with sharing class CVTransformerApi {
+  public class CVTransformerOrganization {
+    public String id;
+    public String avatar;
+    public String name;
+  }
+
+  public class CVTransformerCandidateAttachment {
+    public String text;
+    public String type;
+    public String url;
+  }
+
+  public class CVTransformerCandidate {
+    public String id;
+    public String organization_id;
+    public String secret_editable;
+    public String secret;
+    public String secret_anonymous;
+    public Map<String, CVTransformerCandidateAttachment> attachments;
+  }
+
+  private static CVTransformerCandidate candidateGet(
+    String api_key,
+    String id
+  ) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:' + nsPrefix('API') + '/candidates?id=eq.' + id
+    );
+    request.setMethod('GET');
+    request.setHeader('Authorization', 'Bearer ' + api_key);
+
+    Http http = new Http();
+    HttpResponse response = http.send(request);
+    Integer statusCode = response.getStatusCode();
+    if (statusCode < 200 || statusCode >= 300)
+      throw new AuraHandledException(
+        'Could not get candidate: ' + response.getBody()
+      );
+
+    List<CVTransformerCandidate> candidates = (List<CVTransformerCandidate>) JSON.deserialize(
+      response.getBody(),
+      List<CVTransformerCandidate>.class
+    );
+    return candidates[0];
+  }
+
+  private static CVTransformerCandidate candidateCreate(String api_key) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint('callout:' + nsPrefix('API') + '/candidates');
+    request.setMethod('POST');
+    request.setHeader('Authorization', 'Bearer ' + api_key);
+    request.setHeader('Content-Type', 'application/json');
+    request.setBody('{}');
+
+    Http http = new Http();
+    HttpResponse response = http.send(request);
+    Integer statusCode = response.getStatusCode();
+    if (statusCode < 200 || statusCode >= 300)
+      throw new AuraHandledException(
+        'Could not create candidate: ' + response.getBody()
+      );
+
+    return (CVTransformerCandidate) JSON.deserialize(
+      response.getBody(),
+      CVTransformerCandidate.class
+    );
+  }
+
+  public class CandidateSalesforceData {
+    public String birthdate = '';
+    public String email = '';
+    public String first_name = '';
+    public String last_name = '';
+    public String phone = '';
+    public String title = '';
+
+    public CandidateSalesforceData() {
+    }
+  }
+
+  private static CandidateSalesforceData candidateExtract(
+    String api_key,
+    String candidate_id
+  ) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:' + nsPrefix('API') + '/candidates/' + candidate_id + '/extract'
+    );
+    request.setMethod('POST');
+    request.setHeader('Authorization', 'Bearer ' + api_key);
+    request.setHeader('Content-Type', 'application/json');
+    request.setBody(
+      '{' +
+        '  "type": "object",' +
+        '  "properties": {' +
+        '    "birthdate": {' +
+        '      "description": "Format as YYYY-MM-DD.",' +
+        '      "format": "date",' +
+        '      "type": "string"' +
+        '    },' +
+        '    "email": { "type": "string" },' +
+        '    "first_name": { "type": "string" },' +
+        '    "last_name": { "type": "string" },' +
+        '    "phone": { "type": "string" },' +
+        '    "title": { "type": "string" }' +
+        '  },' +
+        '  "additionalProperties": false,' +
+        '  "$schema": "http://json-schema.org/draft-07/schema#"' +
+        '}'
+    );
+
+    Http http = new Http();
+    HttpResponse response = http.send(request);
+
+    try {
+      return (CandidateSalesforceData) JSON.deserialize(
+        response.getBody(),
+        CandidateSalesforceData.class
+      );
+    } catch (Exception e) {
+      System.debug('Error deserializing response: ' + e.getMessage());
+      return new CandidateSalesforceData();
+    }
+  }
+
+  public static Date stringToDate(String dateString) {
+    if (String.isBlank(dateString))
+      return null;
+    try {
+      return Date.valueOf(dateString);
+    } catch (Exception e) {
+      System.debug('Invalid date format: ' + dateString);
+      return null;
+    }
+  }
+
+  public class UtilPageData {
+    @AuraEnabled
+    public String organization_id;
+    @AuraEnabled
+    public String color_scheme;
+    @AuraEnabled
+    public String language;
+
+    public UtilPageData() {
+    }
+
+    public UtilPageData(CVTransformerConfiguration__c config) {
+      this.organization_id = config.Name;
+      this.color_scheme = config.color_scheme__c;
+      this.language = config.language__c;
+    }
+  }
+
+  public class ContactPageData {
+    @AuraEnabled
+    public String organization_id;
+    @AuraEnabled
+    public String color_scheme;
+    @AuraEnabled
+    public String language;
+    @AuraEnabled
+    public String candidate_id;
+    @AuraEnabled
+    public String candidate_secret;
+
+    public ContactPageData() {
+    }
+
+    public ContactPageData(
+      CVTransformerConfiguration__c config,
+      Contact contact
+    ) {
+      this.organization_id = config.Name;
+      this.color_scheme = config.color_scheme__c;
+      this.language = config.language__c;
+      this.candidate_id = contact.cvt_id__c;
+      this.candidate_secret = contact.cvt_secret__c;
+    }
+  }
+
   private static Set<String> contentVersionFieldsList() {
     Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
       .get('ContentVersion')
@@ -23,15 +205,67 @@ public with sharing class CVTransformerApi {
       : 'application/octet-stream';
   }
 
+  private static String nsPrefix(String baseName) {
+    String prefixed = 'CVTransformer__' + baseName;
+    List<NamedCredential> creds = [
+      SELECT Id
+      FROM NamedCredential
+      WHERE DeveloperName = :prefixed
+      LIMIT 1
+    ];
+    return creds.isEmpty() ? baseName : prefixed;
+  }
+
+  private static HttpResponse attach(
+    String api_key,
+    String candidate_id,
+    String location,
+    ContentVersion contentVersion
+  ) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:' +
+        nsPrefix('API') +
+        '/candidates/' +
+        candidate_id +
+        '/attach?location=' +
+        location
+    );
+    request.setMethod('POST');
+    request.setHeader('Authorization', 'Bearer ' + api_key);
+    request.setHeader('Content-Type', getMimeType(contentVersion.FileType));
+    request.setHeader(
+      'Content-Disposition',
+      'attachment; filename="' + contentVersion.Title + '"'
+    );
+    request.setBodyAsBlob(contentVersion.VersionData);
+    Http http = new Http();
+    return http.send(request);
+  }
+
   @AuraEnabled(cacheable=true)
-  public static ResponseData dataGet(Id contact_id) {
+  public static UtilPageData utilDataGet(Id contact_id) {
     List<CVTransformerConfiguration__c> configs = [
       SELECT Name, api_key__c, color_scheme__c, language__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
     if (configs.isEmpty())
-      return new ResponseData();
+      return new UtilPageData();
+    CVTransformerConfiguration__c config = configs[0];
+
+    return new UtilPageData(config);
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static ContactPageData contactDataGet(Id contact_id) {
+    List<CVTransformerConfiguration__c> configs = [
+      SELECT Name, api_key__c, color_scheme__c, language__c
+      FROM CVTransformerConfiguration__c
+      LIMIT 1
+    ];
+    if (configs.isEmpty())
+      return new ContactPageData();
     CVTransformerConfiguration__c config = configs[0];
     Contact contact = [
       SELECT cvt_id__c, cvt_secret__c
@@ -40,7 +274,7 @@ public with sharing class CVTransformerApi {
       LIMIT 1
     ];
 
-    return new ResponseData(config, contact);
+    return new ContactPageData(config, contact);
   }
 
   @AuraEnabled
@@ -89,7 +323,72 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static ResponseData candidateCreate(Id contact_id) {
+  public static String contactCreate(
+    Id content_document_id,
+    Id content_version_id
+  ) {
+    CVTransformerConfiguration__c config = [
+      SELECT Name, api_key__c, color_scheme__c, language__c
+      FROM CVTransformerConfiguration__c
+      LIMIT 1
+    ];
+    ContentVersion contentVersion = [
+      SELECT Title, VersionData, FileType
+      FROM ContentVersion
+      WHERE Id = :content_version_id
+      LIMIT 1
+    ];
+
+    // Create new candidate in CVTransformer
+    CVTransformerCandidate candidate = candidateCreate(config.api_key__c);
+
+    // Attach the document to the candidate
+    HttpResponse response = attach(
+      config.api_key__c,
+      candidate.id,
+      'cv',
+      contentVersion
+    );
+
+    CandidateSalesforceData data = candidateExtract(
+      config.api_key__c,
+      candidate.id
+    );
+
+    // Create new contact in Salesforce
+    Contact contact = new Contact();
+    contact.Birthdate = stringToDate(data.birthdate);
+    contact.Email = data.email;
+    contact.FirstName = data.first_name;
+    contact.LastName = String.isBlank(data.last_name)
+      ? 'Unknown'
+      : data.last_name;
+    contact.Phone = data.phone;
+    contact.Title = data.title;
+    contact.cvt_id__c = candidate.id;
+    contact.cvt_secret__c = candidate.secret_editable;
+    insert contact;
+
+    // Attach the document to the contact
+    contact = [
+      SELECT Id
+      FROM Contact
+      WHERE Id = :contact.Id
+      LIMIT 1
+    ];
+
+    ContentDocumentLink contentLink = new ContentDocumentLink();
+    contentLink.ContentDocumentId = content_document_id;
+    contentLink.LinkedEntityId = contact.Id;
+    contentLink.ShareType = 'V';
+    contentLink.Visibility = 'AllUsers';
+    insert contentLink;
+
+    return contact.id;
+  }
+
+  @AuraEnabled
+  public static ContactPageData contactTransformCv(Id contact_id) {
     CVTransformerConfiguration__c config = [
       SELECT Name, api_key__c, color_scheme__c, language__c
       FROM CVTransformerConfiguration__c
@@ -107,26 +406,7 @@ public with sharing class CVTransformerApi {
     if (contact.cvt_id__c != null)
       throw new AuraHandledException('Candidate already exists');
 
-    HttpRequest request = new HttpRequest();
-    request.setEndpoint('callout:' + nsPrefix('API') + '/candidates');
-    request.setMethod('POST');
-    request.setHeader('Authorization', 'Bearer ' + config.api_key__c);
-    request.setHeader('Content-Type', 'application/json');
-    request.setBody('{}');
-    Http http = new Http();
-    HttpResponse response = http.send(request);
-
-    Integer statusCode = response.getStatusCode();
-    if (statusCode < 200 || statusCode >= 300) {
-      throw new AuraHandledException(
-        'Could not create candidate: ' + response.getBody()
-      );
-    }
-
-    CVTransformerCandidate candidate = (CVTransformerCandidate) JSON.deserialize(
-      response.getBody(),
-      CVTransformerCandidate.class
-    );
+    CVTransformerCandidate candidate = candidateCreate(config.api_key__c);
 
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
@@ -155,11 +435,14 @@ public with sharing class CVTransformerApi {
 
     update contact;
 
-    return new ResponseData(config, contact);
+    return new ContactPageData(config, contact);
   }
 
   @AuraEnabled
-  public static ResponseData candidateLink(Id contact_id, String candidate_id) {
+  public static ContactPageData candidateLink(
+    Id contact_id,
+    String candidate_id
+  ) {
     CVTransformerConfiguration__c config = [
       SELECT Name, api_key__c, color_scheme__c, language__c
       FROM CVTransformerConfiguration__c
@@ -185,7 +468,7 @@ public with sharing class CVTransformerApi {
     contact.cvt_secret__c = candidate.secret_editable;
     update contact;
 
-    return new ResponseData(config, contact);
+    return new ContactPageData(config, contact);
   }
 
   @AuraEnabled
@@ -203,7 +486,7 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static ResponseData candidateAttachCV(
+  public static ContactPageData candidateAttachCV(
     Id contact_id,
     Id content_version_id
   ) {
@@ -238,7 +521,7 @@ public with sharing class CVTransformerApi {
       );
     }
 
-    return new ResponseData(config, contact);
+    return new ContactPageData(config, contact);
   }
 
   @AuraEnabled
@@ -321,107 +604,5 @@ public with sharing class CVTransformerApi {
     insert contentLink;
 
     return 'Ok';
-  }
-
-  public class CVTransformerOrganization {
-    public String id;
-    public String avatar;
-    public String name;
-  }
-
-  public class CVTransformerCandidateAttachment {
-    public String text;
-    public String type;
-    public String url;
-  }
-
-  public class CVTransformerCandidate {
-    public String id;
-    public String organization_id;
-    public String secret_editable;
-    public String secret;
-    public String secret_anonymous;
-    public Map<String, CVTransformerCandidateAttachment> attachments;
-  }
-
-  private static CVTransformerCandidate candidateGet(
-    String api_key,
-    String id
-  ) {
-    HttpRequest request = new HttpRequest();
-    request.setEndpoint(
-      'callout:' + nsPrefix('API') + '/candidates?id=eq.' + id
-    );
-    request.setMethod('GET');
-    request.setHeader('Authorization', 'Bearer ' + api_key);
-    Http http = new Http();
-    HttpResponse response = http.send(request);
-    List<CVTransformerCandidate> candidates = (List<CVTransformerCandidate>) JSON.deserialize(
-      response.getBody(),
-      List<CVTransformerCandidate>.class
-    );
-    return candidates[0];
-  }
-
-  private static HttpResponse attach(
-    String api_key,
-    String candidate_id,
-    String location,
-    ContentVersion contentVersion
-  ) {
-    HttpRequest request = new HttpRequest();
-    request.setEndpoint(
-      'callout:' +
-        nsPrefix('API') +
-        '/candidates/' +
-        candidate_id +
-        '/attach?location=' +
-        location
-    );
-    request.setMethod('POST');
-    request.setHeader('Authorization', 'Bearer ' + api_key);
-    request.setHeader('Content-Type', getMimeType(contentVersion.FileType));
-    request.setHeader(
-      'Content-Disposition',
-      'attachment; filename="' + contentVersion.Title + '"'
-    );
-    request.setBodyAsBlob(contentVersion.VersionData);
-    Http http = new Http();
-    return http.send(request);
-  }
-
-  private static String nsPrefix(String baseName) {
-    String prefixed = 'CVTransformer__' + baseName;
-    List<NamedCredential> creds = [
-      SELECT Id
-      FROM NamedCredential
-      WHERE DeveloperName = :prefixed
-      LIMIT 1
-    ];
-    return creds.isEmpty() ? baseName : prefixed;
-  }
-
-  public class ResponseData {
-    @AuraEnabled
-    public String organization_id;
-    @AuraEnabled
-    public String color_scheme;
-    @AuraEnabled
-    public String language;
-    @AuraEnabled
-    public String candidate_id;
-    @AuraEnabled
-    public String candidate_secret;
-
-    public ResponseData() {
-    }
-
-    public ResponseData(CVTransformerConfiguration__c config, Contact contact) {
-      this.organization_id = config.Name;
-      this.color_scheme = config.color_scheme__c;
-      this.language = config.language__c;
-      this.candidate_id = contact.cvt_id__c;
-      this.candidate_secret = contact.cvt_secret__c;
-    }
   }
 }

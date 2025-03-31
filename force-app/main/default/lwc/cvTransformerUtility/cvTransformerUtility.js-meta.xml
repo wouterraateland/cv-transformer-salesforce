@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <LightningComponentBundle
   xmlns="http://soap.sforce.com/2006/04/metadata"
-  fqn="contentVersionDropdown"
+  fqn="cvTransformerUtility"
 >
   <apiVersion>62.0</apiVersion>
-  <isExposed>false</isExposed>
+  <isExposed>true</isExposed>
+  <masterLabel>CV-Transformer Util</masterLabel>
+  <targets>
+    <target>lightning__UtilityBar</target>
+  </targets>
 </LightningComponentBundle>

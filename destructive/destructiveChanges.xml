@@ -19,11 +19,8 @@
     <members>contentVersionDropdown</members>
     <members>cvTransformer</members>
     <members>contactActions</members>
+    <members>cvTransformerUtility</members>
     <name>LightningComponentBundle</name>
-  </types>
-  <types>
-    <members>CVTransformerUtility</members>
-    <name>FlexiPage</name>
   </types>
   <types>
     <members>API</members>

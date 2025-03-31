@@ -1,24 +1,20 @@
-import { LightningElement, api, track, wire } from "lwc";
-import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
-import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
-import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
-import candidateUnlink from "@salesforce/apex/CVTransformerApi.candidateUnlink";
+import { LightningElement, track, wire } from "lwc";
+import { NavigationMixin } from "lightning/navigation";
 import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
-import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
-import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
+import contactCreate from "@salesforce/apex/CVTransformerApi.contactCreate";
+import utilDataGet from "@salesforce/apex/CVTransformerApi.utilDataGet";
 
-export default class CVTransformer extends LightningElement {
-  @api recordId;
+export default class CVTransformerUtility extends NavigationMixin(
+  LightningElement
+) {
   @track data = {};
   error;
   state = "loading";
 
   organization_id;
-  candidate_id;
-  candidate_secret_editable;
 
-  @wire(contactDataGet, { contact_id: "$recordId" })
+  @wire(utilDataGet)
   wiredData({ error, data }) {
     if (data) {
       this.data = data;
@@ -49,14 +45,6 @@ export default class CVTransformer extends LightningElement {
 
   get isError() {
     return this.state === "error";
-  }
-
-  get iframeUrl() {
-    let url = `https://www.cv-transformer.com/candidates/${this.data.candidate_id}?s=${this.data.candidate_secret}`;
-    if (this.data.color_scheme)
-      url += `&color_scheme=${this.data.color_scheme}`;
-    if (this.data.language) url += `&language=${this.data.language}`;
-    return url;
   }
 
   onConfigure() {
@@ -139,62 +127,24 @@ export default class CVTransformer extends LightningElement {
     this.state = "configure";
   }
 
-  async onCandidateCreate() {
-    this.state = "loading";
-    try {
-      this.data = await contactTransformCv({ contact_id: this.recordId });
-      this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "edit";
-  }
+  async onCvUpload(event) {
+    const file = event.detail.files[0];
+    if (!file) return;
 
-  async onCandidateSelect() {
-    // eslint-disable-next-line no-alert
-    const candidate_id = prompt(
-      "Enter candidate ID. (https://cv-transformer.com/organizations/{{organization_id}}/candidates/{{candidate_id}})"
-    );
-    if (!candidate_id) return;
     this.state = "loading";
     try {
-      this.data = await candidateLink({
-        contact_id: this.recordId,
-        candidate_id
+      const contact_id = await contactCreate({
+        content_document_id: file.documentId,
+        content_version_id: file.contentVersionId
+      });
+      this[NavigationMixin.Navigate]({
+        type: "standard__recordPage",
+        attributes: {
+          recordId: contact_id,
+          actionName: "view"
+        }
       });
       this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "edit";
-  }
-
-  async onCandidateUnlink() {
-    this.state = "loading";
-    try {
-      await candidateUnlink({ contact_id: this.recordId });
-      this.data = { ...this.data, candidate_id: null, candidate_secret: null };
-      this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "edit";
-  }
-
-  async onAttachmentSelect(event) {
-    this.state = "loading";
-    try {
-      if (event.detail === "regular" || event.detail === "anonymous") {
-        await candidateExportCV({
-          contact_id: this.recordId,
-          export_type: event.detail
-        });
-        window.location.reload();
-      } else
-        await candidateAttachCV({
-          contact_id: this.recordId,
-          content_version_id: event.detail
-        });
     } catch (error) {
       this.error = error.body.message;
     }

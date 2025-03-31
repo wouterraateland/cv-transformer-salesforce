@@ -35,7 +35,7 @@ private class CVTransformerApiTest {
   static void testDataGet() {
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
     Test.startTest();
-    CVTransformerApi.ResponseData response = CVTransformerApi.dataGet(
+    CVTransformerApi.ContactPageData response = CVTransformerApi.contactDataGet(
       contact.Id
     );
     Test.stopTest();
@@ -79,11 +79,11 @@ private class CVTransformerApiTest {
   }
 
   @isTest
-  static void testCandidateCreate() {
+  static void testContactTransformCv() {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
     Test.startTest();
-    CVTransformerApi.ResponseData response = CVTransformerApi.candidateCreate(
+    CVTransformerApi.ContactPageData response = CVTransformerApi.contactTransformCv(
       contact.Id
     );
     Test.stopTest();
@@ -99,7 +99,7 @@ private class CVTransformerApiTest {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
     Test.startTest();
-    CVTransformerApi.ResponseData response = CVTransformerApi.candidateLink(
+    CVTransformerApi.ContactPageData response = CVTransformerApi.candidateLink(
       contact.Id,
       '12345'
     );
@@ -145,7 +145,7 @@ private class CVTransformerApiTest {
     );
     insert contentVersion;
     Test.startTest();
-    CVTransformerApi.ResponseData response = CVTransformerApi.candidateAttachCV(
+    CVTransformerApi.ContactPageData response = CVTransformerApi.candidateAttachCV(
       contact.Id,
       contentVersion.Id
     );

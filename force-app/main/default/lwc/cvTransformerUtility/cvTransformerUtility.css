@@ -1,0 +1,12 @@
+.file-upload .slds-file-selector,
+.file-upload lightning-primitive-file-droppable-zone,
+.file-upload lightning-primitive-file-droppable-zone > slot {
+  width: 100%;
+}
+
+.file-upload label {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 1rem;
+}
