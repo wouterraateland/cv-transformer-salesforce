@@ -6,7 +6,7 @@ public with sharing class CVTransformerApi {
   }
 
   public class CVTransformerCandidateAttachment {
-    public String text;
+    public Map<String, String> text;
     public String type;
     public String url;
   }
@@ -38,9 +38,11 @@ public with sharing class CVTransformerApi {
       throw new AuraHandledException(
         'Could not get candidate: ' + response.getBody()
       );
+    String responseBody = response.getBody();
+    System.debug('Response: ' + responseBody);
 
     List<CVTransformerCandidate> candidates = (List<CVTransformerCandidate>) JSON.deserialize(
-      response.getBody(),
+      responseBody,
       List<CVTransformerCandidate>.class
     );
     return candidates[0];
@@ -206,14 +208,8 @@ public with sharing class CVTransformerApi {
   }
 
   private static String nsPrefix(String baseName) {
-    String prefixed = 'CVTransformer__' + baseName;
-    List<NamedCredential> creds = [
-      SELECT Id
-      FROM NamedCredential
-      WHERE DeveloperName = :prefixed
-      LIMIT 1
-    ];
-    return creds.isEmpty() ? baseName : prefixed;
+    return 'CVTransformer__' + baseName; // Production
+    // return baseName; // Development
   }
 
   private static HttpResponse attach(
@@ -244,7 +240,7 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled(cacheable=true)
-  public static UtilPageData utilDataGet(Id contact_id) {
+  public static UtilPageData utilDataGet() {
     List<CVTransformerConfiguration__c> configs = [
       SELECT Name, api_key__c, color_scheme__c, language__c
       FROM CVTransformerConfiguration__c

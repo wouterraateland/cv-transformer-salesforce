@@ -4,5 +4,8 @@
   fqn="contentVersionDropdown"
 >
   <apiVersion>62.0</apiVersion>
-  <isExposed>false</isExposed>
+  <isExposed>true</isExposed>
+  <targets>
+    <target>lightning__RecordPage</target>
+  </targets>
 </LightningComponentBundle>

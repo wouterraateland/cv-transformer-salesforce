@@ -17,6 +17,13 @@ private class CVTransformerApiTest {
       cvt_secret__c = null
     );
     insert contact;
+
+    ContentVersion contentVersion = new ContentVersion(
+      Title = 'Test CV',
+      PathOnClient = 'TestCV.pdf',
+      VersionData = Blob.valueOf('Test Data')
+    );
+    insert contentVersion;
   }
 
   @isTest
@@ -32,7 +39,20 @@ private class CVTransformerApiTest {
   }
 
   @isTest
-  static void testDataGet() {
+  static void testUtilDataGet() {
+    Test.startTest();
+    CVTransformerApi.UtilPageData response = CVTransformerApi.utilDataGet();
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+    System.assertEquals(
+      'TestOrg',
+      response.organization_id,
+      'Expected organization_id to be TestOrg'
+    );
+  }
+
+  @isTest
+  static void testContactDataGet() {
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
     Test.startTest();
     CVTransformerApi.ContactPageData response = CVTransformerApi.contactDataGet(
@@ -79,6 +99,24 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testContactCreate() {
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    String response = CVTransformerApi.contactCreate(
+      contentVersion.ContentDocumentId,
+      contentVersion.Id
+    );
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+  }
+
+  @isTest
   static void testContactTransformCv() {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
@@ -92,6 +130,22 @@ private class CVTransformerApiTest {
       response.candidate_id,
       'Expected candidate_id to be set'
     );
+  }
+
+  @isTest
+  static void testContactTransformCvError() {
+    CVTransformerApiMock mock = new CVTransformerApiMock();
+    mock.statusCode = 400;
+    Test.setMock(HttpCalloutMock.class, mock);
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    Test.startTest();
+    try {
+      CVTransformerApi.contactTransformCv(contact.Id);
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected error message');
+    }
+    Test.stopTest();
   }
 
   @isTest
@@ -109,6 +163,22 @@ private class CVTransformerApiTest {
       response.candidate_id,
       'Expected candidate_id to be 12345'
     );
+  }
+
+  @isTest
+  static void testCandidateLinkError() {
+    CVTransformerApiMock mock = new CVTransformerApiMock();
+    mock.statusCode = 400;
+    Test.setMock(HttpCalloutMock.class, mock);
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    Test.startTest();
+    try {
+      CVTransformerApi.candidateLink(contact.Id, '12345');
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected error message');
+    }
+    Test.stopTest();
   }
 
   @isTest
@@ -151,5 +221,66 @@ private class CVTransformerApiTest {
     );
     Test.stopTest();
     System.assertNotEquals(null, response, 'Expected non-null response');
+  }
+
+  @isTest
+  static void testCandidateSalesforceData() {
+    CVTransformerApi.CandidateSalesforceData data = new CVTransformerApi.CandidateSalesforceData();
+    System.assertEquals(
+      data.last_name,
+      '',
+      'Expected last_name to be empty string'
+    );
+  }
+
+  @isTest
+  static void testStringToDate() {
+    String dateString = '2023-10-01';
+    Date result = CVTransformerApi.stringToDate(dateString);
+    System.assertEquals(
+      Date.valueOf(dateString),
+      result,
+      'Expected date to be ' + dateString
+    );
+
+    dateString = 'invalid-date';
+    result = CVTransformerApi.stringToDate(dateString);
+    System.assertEquals(null, result, 'Expected null for invalid date string');
+
+    dateString = null;
+    result = CVTransformerApi.stringToDate(dateString);
+    System.assertEquals(null, result, 'Expected null for null date string');
+  }
+
+  @isTest
+  static void testEmptyUtilPageData() {
+    CVTransformerApi.UtilPageData data = new CVTransformerApi.UtilPageData();
+    System.assertEquals(
+      data.organization_id,
+      null,
+      'Expected organization_id to be null'
+    );
+    System.assertEquals(data.language, null, 'Expected language to be null');
+    System.assertEquals(
+      data.color_scheme,
+      null,
+      'Expected color_scheme to be null'
+    );
+  }
+
+  @isTest
+  static void testEmptyContactPageData() {
+    CVTransformerApi.ContactPageData data = new CVTransformerApi.ContactPageData();
+    System.assertEquals(
+      data.organization_id,
+      null,
+      'Expected organization_id to be null'
+    );
+    System.assertEquals(data.language, null, 'Expected language to be null');
+    System.assertEquals(
+      data.color_scheme,
+      null,
+      'Expected color_scheme to be null'
+    );
   }
 }
