@@ -1,5 +1,5 @@
 import { LightningElement, api, wire, track } from "lwc";
-import getRelatedContentVersions from "@salesforce/apex/ContentVersionController.getRelatedContentVersions";
+import getRelatedContentVersions from "@salesforce/apex/CVTransformerApi.getRelatedContentVersions";
 
 export default class ContentVersionDropdown extends LightningElement {
   @api recordId;
