@@ -45,10 +45,12 @@
             </p>
           </template>
         </lightning-layout>
-        <template lwc:if={error}>
-          <p slot="footer" class="slds-text-color_error">{error}</p>
-        </template>
       </form>
+      <template lwc:if={error}>
+        <p slot="footer" class="slds-var-m-around_medium slds-text-color_error">
+          {error}
+        </p>
+      </template>
     </lightning-card>
   </template>
   <template lwc:if={isConfigure}>
@@ -87,11 +89,11 @@
     <lightning-card title="CV-Transformer">
       <lightning-layout slot="actions" style="gap: 0.5rem">
         <template lwc:if={data.candidate_id}>
-          <c-content-version-dropdown
+          <!-- <c-content-version-dropdown
             record-id={recordId}
             onselect={onAttachmentSelect}
           >
-          </c-content-version-dropdown>
+          </c-content-version-dropdown> -->
           <lightning-button-icon
             alternative-text="Unlink candidate"
             icon-name="utility:remove_link"
@@ -132,6 +134,8 @@
       </template>
       <template lwc:if={data.candidate_id}>
         <iframe
+          allow="fullscreen"
+          allowfullscreen
           src={iframeUrl}
           style="
             border-bottom: none;

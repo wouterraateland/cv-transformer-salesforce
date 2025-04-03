@@ -56,6 +56,7 @@ export default class CVTransformer extends LightningElement {
     if (this.data.color_scheme)
       url += `&color_scheme=${this.data.color_scheme}`;
     if (this.data.language) url += `&language=${this.data.language}`;
+    url += `&context=salesforce`;
     return url;
   }
 
@@ -199,5 +200,39 @@ export default class CVTransformer extends LightningElement {
       this.error = error.body.message;
     }
     this.state = "edit";
+  }
+
+  abortController = new AbortController();
+
+  connectedCallback() {
+    window.addEventListener(
+      "message",
+      async (event) => {
+        if (
+          typeof event.data === "object" &&
+          event.data !== null &&
+          !Array.isArray(event.data) &&
+          event.data.type === "candidate-export" &&
+          typeof event.data.export_type === "string"
+        ) {
+          this.state = "loading";
+          try {
+            await candidateExportCV({
+              contact_id: this.recordId,
+              export_type: event.data.export_type
+            });
+            window.location.reload();
+          } catch (error) {
+            this.error = error.body.message;
+          }
+          this.state = "edit";
+        }
+      },
+      { signal: this.abortController.signal }
+    );
+  }
+
+  disconnectedCallback() {
+    this.abortController.abort();
   }
 }

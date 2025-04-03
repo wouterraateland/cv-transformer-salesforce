@@ -12,7 +12,9 @@ private class CVTransformerApiTest {
     insert config;
 
     Contact contact = new Contact(
-      LastName = 'Test',
+      Email = 'test@example.com',
+      FirstName = 'Test',
+      LastName = 'Example',
       cvt_id__c = null,
       cvt_secret__c = null
     );
@@ -39,15 +41,39 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testGetMimeTypeOctet() {
+    Test.startTest();
+    String mimeType = CVTransformerApi.getMimeType('Invalid');
+    Test.stopTest();
+    System.assertEquals(
+      'application/octet-stream',
+      mimeType,
+      'Expected MIME type for Invalid'
+    );
+  }
+
+  @isTest
   static void testUtilDataGet() {
     Test.startTest();
     CVTransformerApi.UtilPageData response = CVTransformerApi.utilDataGet();
     Test.stopTest();
-    System.assertNotEquals(null, response, 'Expected non-null response');
     System.assertEquals(
       'TestOrg',
       response.organization_id,
       'Expected organization_id to be TestOrg'
+    );
+  }
+
+  @isTest
+  static void testUtilDataGetEmpty() {
+    Test.startTest();
+    delete [SELECT Id FROM CVTransformerConfiguration__c];
+    CVTransformerApi.UtilPageData response = CVTransformerApi.utilDataGet();
+    Test.stopTest();
+    System.assertEquals(
+      null,
+      response.organization_id,
+      'Expected organization_id to be null'
     );
   }
 
@@ -68,6 +94,22 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testContactDataEmpty() {
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    Test.startTest();
+    delete [SELECT Id FROM CVTransformerConfiguration__c];
+    CVTransformerApi.ContactPageData response = CVTransformerApi.contactDataGet(
+      contact.Id
+    );
+    Test.stopTest();
+    System.assertEquals(
+      null,
+      response.organization_id,
+      'Expected organization_id to be null'
+    );
+  }
+
+  @isTest
   static void testConfigUpsert() {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Test.startTest();
@@ -78,6 +120,21 @@ private class CVTransformerApiTest {
       organization_id,
       'Expected organization name to be 12345'
     );
+  }
+
+  @isTest
+  static void testConfigUpsertError() {
+    CVTransformerApiMock mock = new CVTransformerApiMock();
+    mock.statusCode = 400;
+    Test.setMock(HttpCalloutMock.class, mock);
+    Test.startTest();
+    try {
+      CVTransformerApi.configUpsert('test_api_key');
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected error message');
+    }
+    Test.stopTest();
   }
 
   @isTest
@@ -117,6 +174,52 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testContactCreateBlankLastName() {
+    CVTransformerApiMock mock = new CVTransformerApiMock();
+    mock.last_name = '';
+    Test.setMock(HttpCalloutMock.class, mock);
+    Test.startTest();
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    String response = CVTransformerApi.contactCreate(
+      contentVersion.ContentDocumentId,
+      contentVersion.Id
+    );
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+  }
+
+  @isTest
+  static void testContactCreateDuplicate() {
+    CVTransformerApiMock mock = new CVTransformerApiMock();
+    mock.first_name = 'Test';
+    mock.last_name = 'Example';
+    mock.email = 'test@example.com';
+    Test.setMock(HttpCalloutMock.class, mock);
+    Test.startTest();
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    try {
+      CVTransformerApi.contactCreate(
+        contentVersion.ContentDocumentId,
+        contentVersion.Id
+      );
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected duplicate contact error');
+    }
+    Test.stopTest();
+  }
+
+  @isTest
   static void testContactTransformCv() {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
@@ -130,6 +233,23 @@ private class CVTransformerApiTest {
       response.candidate_id,
       'Expected candidate_id to be set'
     );
+  }
+
+  @isTest
+  static void testContactTransformCvExisting() {
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    contact.cvt_id__c = '12345';
+    update contact;
+
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    try {
+      CVTransformerApi.contactTransformCv(contact.Id);
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected error message');
+    }
+    Test.stopTest();
   }
 
   @isTest

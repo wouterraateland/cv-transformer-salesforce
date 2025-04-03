@@ -363,13 +363,17 @@ public with sharing class CVTransformerApi {
     contact.Title = data.title;
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
-    insert contact;
 
-    // Attach the document to the contact
+    try {
+      insert contact;
+    } catch (DmlException e) {
+      throw new AuraHandledException('Could not create contact: Duplicate');
+    }
+
     contact = [
-      SELECT Id
+      SELECT Id, cvt_id__c, cvt_secret__c
       FROM Contact
-      WHERE Id = :contact.Id
+      ORDER BY CreatedDate DESC
       LIMIT 1
     ];
 
@@ -380,7 +384,7 @@ public with sharing class CVTransformerApi {
     contentLink.Visibility = 'AllUsers';
     insert contentLink;
 
-    return contact.id;
+    return contact.Id;
   }
 
   @AuraEnabled
@@ -409,20 +413,25 @@ public with sharing class CVTransformerApi {
 
     Set<String> contentVersionFields = contentVersionFieldsList();
 
-    if (
-      contentVersionFields.contains('seven20__file_type__c') &&
-      !contact.ContentDocumentLinks.isEmpty()
-    ) {
+    if (!contact.ContentDocumentLinks.isEmpty()) {
       List<String> contentDocumentIds = new List<String>();
       for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
         contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
-      List<ContentVersion> contentVersions = Database.query(
-        'SELECT ' +
-          String.join(contentVersionFields, ', ') +
-          ' FROM ContentVersion WHERE ContentDocumentId IN (' +
-          String.join(contentDocumentIds, ', ') +
-          ') AND IsLatest = TRUE AND seven20__file_type__c = \'CV\''
-      );
+      List<ContentVersion> contentVersions = contentVersionFields.contains(
+          'seven20__file_type__c'
+        )
+        ? Database.query(
+            'SELECT ' +
+              String.join(contentVersionFields, ', ') +
+              ' FROM ContentVersion WHERE ContentDocumentId IN (' +
+              String.join(contentDocumentIds, ', ') +
+              ') AND IsLatest = TRUE AND seven20__file_type__c = \'CV\''
+          )
+        : [
+            SELECT Id, Title, VersionData, FileType
+            FROM ContentVersion
+            WHERE ContentDocumentId IN :contentDocumentIds AND IsLatest = TRUE
+          ];
       ContentVersion contentVersion = contentVersions[0];
 
       if (contentVersion != null)
