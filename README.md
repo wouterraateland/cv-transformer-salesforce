@@ -32,19 +32,19 @@ sf force limits api display
 ## Updating the package
 
 - `sf package version create --path force-app --installation-key cvt1 --code-coverage`
-- `sf package version promote --package 04tgK0000000gorQAA`
+- `sf package version promote --package 04tgK0000000nC1QAI`
 
 ## Installation
 
 Via CLI
 
 ```
-sf package install --package 04tgK0000000gorQAA --installation-key cvt1
+sf package install --package 04tgK0000000nC1QAI --installation-key cvt1
 ```
 
 ## Via browser
 
-Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK0000000gorQAA \
+Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK0000000nC1QAI \
 Use password `cvt1`
 Follow the post-installation steps described here:
 https://www.cv-transformer.com/en/docs/integrations/salesforce

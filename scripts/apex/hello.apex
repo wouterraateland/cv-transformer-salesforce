@@ -1,5 +1,5 @@
 Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
-  .get('Contact')
+  .get('ContentVersion')
   .getDescribe()
   .fields.getMap();
 

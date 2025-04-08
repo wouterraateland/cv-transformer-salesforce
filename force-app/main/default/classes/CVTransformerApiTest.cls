@@ -178,6 +178,20 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testConfigUpsertEmpty() {
+    delete [SELECT Id FROM CVTransformerConfiguration__c];
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    String organization_id = CVTransformerApi.configUpsert('test_api_key');
+    Test.stopTest();
+    System.assertEquals(
+      '12345',
+      organization_id,
+      'Expected organization name to be 12345'
+    );
+  }
+
+  @isTest
   static void testConfigUpsertError() {
     CVTransformerApiMock mock = new CVTransformerApiMock();
     mock.statusCode = 400;

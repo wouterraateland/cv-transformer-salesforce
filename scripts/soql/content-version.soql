@@ -1,15 +1,16 @@
-// Use .soql files to store SOQL queries.
-// You can execute queries in VS Code by selecting the
-//     query text and running the command:
-//     SFDX: Execute SOQL Query with Currently Selected Text
-
 // SELECT ContentDocumentId
 // FROM ContentDocumentLink
 // WHERE LinkedEntityId = '003QH00000E9vS2YAJ'
 // ->> '069QH000005lwIgYAI'
 
-SELECT Id, seven20__file_type__c
-FROM ContentVersion
-WHERE ContentDocumentId IN ('069QH000005lwIgYAI', '069QH000005lwIgYAI')
-AND IsLatest = TRUE
-AND seven20__file_type__c = 'CV'
+// SELECT Id, seven20__file_type__c, CreatedDate
+// FROM ContentVersion
+// WHERE IsLatest = TRUE
+// AND seven20__file_type__c = 'CV'
+// ORDER BY CreatedDate DESC
+
+SELECT
+  ContentDocument.LatestPublishedVersion.Title,
+  ContentDocument.LatestPublishedVersion.seven20__file_type__c
+FROM ContentDocumentLink
+WHERE LinkedEntityId = '003QH00000F5HCTYA3'

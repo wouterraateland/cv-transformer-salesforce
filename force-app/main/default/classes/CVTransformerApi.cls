@@ -183,13 +183,12 @@ public with sharing class CVTransformerApi {
     }
   }
 
-  private static Set<String> contentVersionFieldsList() {
-    Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
-      .get('ContentVersion')
+  private static Set<String> listObjectFields(String objectName) {
+    return Schema.getGlobalDescribe()
+      .get(objectName)
       .getDescribe()
-      .fields.getMap();
-
-    return fieldMap.keySet();
+      .fields.getMap()
+      .keySet();
   }
 
   public static String getMimeType(String fileType) {
@@ -347,7 +346,7 @@ public with sharing class CVTransformerApi {
       LIMIT 1
     ];
     ContentVersion contentVersion = [
-      SELECT Title, VersionData, FileType
+      SELECT ContentDocumentId, FileType, PathOnClient, Title, VersionData
       FROM ContentVersion
       WHERE Id = :content_version_id
       LIMIT 1
@@ -355,19 +354,16 @@ public with sharing class CVTransformerApi {
 
     // Create new candidate in CVTransformer
     CVTransformerCandidate candidate = candidateCreate(config.api_key__c);
-
     // Attach the document to the candidate
-    HttpResponse response = attach(
-      config.api_key__c,
-      candidate.id,
-      'cv',
-      contentVersion
-    );
+    attach(config.api_key__c, candidate.id, 'cv', contentVersion);
 
     CandidateSalesforceData data = candidateExtract(
       config.api_key__c,
       candidate.id
     );
+
+    Set<String> contactFields = listObjectFields('Contact');
+    Set<String> contentVersionFields = listObjectFields('ContentVersion');
 
     // Create new contact in Salesforce
     Contact contact = new Contact();
@@ -381,6 +377,8 @@ public with sharing class CVTransformerApi {
     contact.Title = data.title;
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
+    if (contactFields.contains('seven20__cv_file_id__c'))
+      contact.put('seven20__cv_file_id__c', content_document_id);
 
     try {
       insert contact;
@@ -388,19 +386,22 @@ public with sharing class CVTransformerApi {
       throw new AuraHandledException('Could not create contact: Duplicate');
     }
 
-    contact = [
-      SELECT Id, cvt_id__c, cvt_secret__c
-      FROM Contact
-      ORDER BY CreatedDate DESC
-      LIMIT 1
-    ];
-
     ContentDocumentLink contentLink = new ContentDocumentLink();
     contentLink.ContentDocumentId = content_document_id;
     contentLink.LinkedEntityId = contact.Id;
     contentLink.ShareType = 'V';
     contentLink.Visibility = 'AllUsers';
     insert contentLink;
+
+    if (contentVersionFields.contains('seven20__file_type__c')) {
+      ContentVersion newVersion = new ContentVersion();
+      newVersion.ContentDocumentId = contentVersion.ContentDocumentId;
+      newVersion.PathOnClient = contentVersion.PathOnClient;
+      newVersion.Title = contentVersion.Title;
+      newVersion.VersionData = contentVersion.VersionData;
+      newVersion.put('seven20__file_type__c', 'CV');
+      insert newVersion;
+    }
 
     return contact.Id;
   }
@@ -429,7 +430,7 @@ public with sharing class CVTransformerApi {
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
 
-    Set<String> contentVersionFields = contentVersionFieldsList();
+    Set<String> contentVersionFields = listObjectFields('ContentVersion');
 
     if (!contact.ContentDocumentLinks.isEmpty()) {
       List<String> contentDocumentIds = new List<String>();
@@ -525,7 +526,7 @@ public with sharing class CVTransformerApi {
       LIMIT 1
     ];
     ContentVersion contentVersion = [
-      SELECT Title, VersionData, FileType
+      SELECT FileType, Title, VersionData
       FROM ContentVersion
       WHERE Id = :content_version_id
       LIMIT 1
@@ -593,7 +594,7 @@ public with sharing class CVTransformerApi {
     fileName = fileName.replaceAll(';.*', '');
     Blob fileBody = response.getBodyAsBlob();
 
-    Set<String> contentVersionFields = contentVersionFieldsList();
+    Set<String> contentVersionFields = listObjectFields('ContentVersion');
 
     // Step 1: Insert ContentVersion
     ContentVersion contentVersion = new ContentVersion();
@@ -625,6 +626,15 @@ public with sharing class CVTransformerApi {
     contentLink.ShareType = 'V';
     contentLink.Visibility = 'AllUsers';
     insert contentLink;
+
+    // Step 4: Set Contact.seven20__cv_file_id__c when empty
+    if (
+      contentVersionFields.contains('seven20__cv_file_id__c') &&
+      contact.get('seven20__cv_file_id__c') == null
+    ) {
+      contact.put('seven20__cv_file_id__c', contentDoc.Id);
+      update contact;
+    }
 
     return 'Ok';
   }
