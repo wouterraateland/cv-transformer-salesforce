@@ -202,37 +202,36 @@ export default class CVTransformer extends LightningElement {
     this.state = "edit";
   }
 
-  abortController = new AbortController();
+  async onMessage(event) {
+    if (
+      typeof event.data !== "object" ||
+      event.data === null ||
+      Array.isArray(event.data) ||
+      event.data.type !== "candidate-export" ||
+      typeof event.data.export_type !== "string"
+    )
+      return;
+
+    this.state = "loading";
+    try {
+      await candidateExportCV({
+        contact_id: this.recordId,
+        export_type: event.data.export_type
+      });
+      window.location.reload();
+    } catch (error) {
+      this.error = error.body.message;
+    }
+    this.state = "edit";
+  }
 
   connectedCallback() {
-    window.addEventListener(
-      "message",
-      async (event) => {
-        if (
-          typeof event.data === "object" &&
-          event.data !== null &&
-          !Array.isArray(event.data) &&
-          event.data.type === "candidate-export" &&
-          typeof event.data.export_type === "string"
-        ) {
-          this.state = "loading";
-          try {
-            await candidateExportCV({
-              contact_id: this.recordId,
-              export_type: event.data.export_type
-            });
-            window.location.reload();
-          } catch (error) {
-            this.error = error.body.message;
-          }
-          this.state = "edit";
-        }
-      },
-      { signal: this.abortController.signal }
-    );
+    if (!this.boundOnMessage) this.boundOnMessage = this.onMessage.bind(this);
+    window.addEventListener("message", this.boundOnMessage);
   }
 
   disconnectedCallback() {
-    this.abortController.abort();
+    if (this.boundOnMessage)
+      window.removeEventListener("message", this.boundOnMessage);
   }
 }
