@@ -184,12 +184,19 @@ public with sharing class CVTransformerApi {
   }
 
   private static Set<String> listObjectFields(String objectName) {
-    return Schema.getGlobalDescribe()
-      .get(objectName)
-      .getDescribe()
-      .fields.getMap()
-      .keySet();
+    return new Set<String>(
+      Schema.getGlobalDescribe()
+        .get(objectName)
+        .getDescribe()
+        .fields.getMap()
+        .keySet()
+    );
   }
+
+  public static Set<String> contactFields = listObjectFields('Contact');
+  public static Set<String> contentVersionFields = listObjectFields(
+    'ContentVersion'
+  );
 
   public static String getMimeType(String fileType) {
     Map<String, String> mimeMap = new Map<String, String>{
@@ -362,9 +369,6 @@ public with sharing class CVTransformerApi {
       candidate.id
     );
 
-    Set<String> contactFields = listObjectFields('Contact');
-    Set<String> contentVersionFields = listObjectFields('ContentVersion');
-
     // Create new contact in Salesforce
     Contact contact = new Contact();
     contact.Birthdate = stringToDate(data.birthdate);
@@ -377,10 +381,10 @@ public with sharing class CVTransformerApi {
     contact.Title = data.title;
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
-    if (contactFields.contains('seven20__cv_file_id__c'))
-      contact.put('seven20__cv_file_id__c', content_document_id);
 
     try {
+      if (contactFields.contains('seven20__cv_file_id__c'))
+        contact.put('seven20__cv_file_id__c', content_document_id);
       insert contact;
     } catch (DmlException e) {
       throw new AuraHandledException('Could not create contact: Duplicate');
@@ -399,7 +403,11 @@ public with sharing class CVTransformerApi {
       newVersion.PathOnClient = contentVersion.PathOnClient;
       newVersion.Title = contentVersion.Title;
       newVersion.VersionData = contentVersion.VersionData;
-      newVersion.put('seven20__file_type__c', 'CV');
+      try {
+        newVersion.put('seven20__file_type__c', 'CV');
+      } catch (Exception e) {
+        System.debug('Error setting seven20__file_type__c: ' + e.getMessage());
+      }
       insert newVersion;
     }
 
@@ -430,12 +438,14 @@ public with sharing class CVTransformerApi {
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
 
-    Set<String> contentVersionFields = listObjectFields('ContentVersion');
-
     if (!contact.ContentDocumentLinks.isEmpty()) {
       List<String> contentDocumentIds = new List<String>();
-      for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
-        contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
+      if (contentVersionFields.contains('seven20__file_type__c'))
+        for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
+          contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
+      else
+        for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
+          contentDocumentIds.add(cdl.ContentDocumentId);
       List<ContentVersion> contentVersions = contentVersionFields.contains(
           'seven20__file_type__c'
         )
@@ -451,10 +461,11 @@ public with sharing class CVTransformerApi {
             FROM ContentVersion
             WHERE ContentDocumentId IN :contentDocumentIds AND IsLatest = TRUE
           ];
-      ContentVersion contentVersion = contentVersions[0];
-
-      if (contentVersion != null)
-        attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersion);
+      if (!contentVersions.isEmpty()) {
+        ContentVersion contentVersion = contentVersions[0];
+        if (contentVersion != null)
+          attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersion);
+      }
     }
 
     update contact;
@@ -593,8 +604,6 @@ public with sharing class CVTransformerApi {
     fileName = fileName.replaceAll('\"', '');
     fileName = fileName.replaceAll(';.*', '');
     Blob fileBody = response.getBodyAsBlob();
-
-    Set<String> contentVersionFields = listObjectFields('ContentVersion');
 
     // Step 1: Insert ContentVersion
     ContentVersion contentVersion = new ContentVersion();

@@ -309,6 +309,54 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testContactCreateWithSeven20OutsideOfSeven20() {
+    CVTransformerApi.contactFields.add('seven20__cv_file_id__c');
+
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    try {
+      CVTransformerApi.contactCreate(
+        contentVersion.ContentDocumentId,
+        contentVersion.Id
+      );
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected contact error');
+    }
+    Test.stopTest();
+
+    CVTransformerApi.contactFields.remove('seven20__cv_file_id__c');
+  }
+
+  @isTest
+  static void testContactCreateWithSeven20FileType() {
+    CVTransformerApi.contentVersionFields.add('seven20__file_type__c');
+
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    String response = CVTransformerApi.contactCreate(
+      contentVersion.ContentDocumentId,
+      contentVersion.Id
+    );
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+
+    CVTransformerApi.contentVersionFields.remove('seven20__file_type__c');
+  }
+
+  @isTest
   static void testContactTransformCv() {
     Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
     Contact contact = [SELECT Id FROM Contact LIMIT 1];
@@ -355,6 +403,41 @@ private class CVTransformerApiTest {
       System.assert(true, 'Expected error message');
     }
     Test.stopTest();
+  }
+
+  @isTest
+  static void testContactTransformCvLinked() {
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    ContentVersion contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      ORDER BY CreatedDate DESC
+      LIMIT 1
+    ];
+    contentVersion = [
+      SELECT Id, ContentDocumentId
+      FROM ContentVersion
+      WHERE Id = :contentVersion.Id
+      LIMIT 1
+    ];
+    ContentDocumentLink contentDocumentLink = new ContentDocumentLink(
+      LinkedEntityId = contact.Id,
+      ContentDocumentId = contentVersion.ContentDocumentId,
+      ShareType = 'V'
+    );
+    insert contentDocumentLink;
+
+    Test.startTest();
+    CVTransformerApi.ContactPageData response = CVTransformerApi.contactTransformCv(
+      contact.Id
+    );
+    Test.stopTest();
+    System.assertNotEquals(
+      null,
+      response.candidate_id,
+      'Expected candidate_id to be set'
+    );
   }
 
   @isTest
