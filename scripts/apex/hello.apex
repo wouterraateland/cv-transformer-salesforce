@@ -1,31 +1,29 @@
-Set<string> contentVersionFields = Schema.getGlobalDescribe()
-  .get('ContentVersion')
+Set<String> fields = Schema.getGlobalDescribe()
+  .get('Contact')
   .getDescribe()
   .fields.getMap()
   .keySet();
 
-ID contact_id = '003gK0000017ZGbQAM';
+for (String fieldName : fields)
+  System.debug(fieldName);
 
-Contact contact = [
-  SELECT
-    cvtransformer__cvt_id__c,
-    cvtransformer__cvt_secret__c,
-    (SELECT ContentDocumentId FROM ContentDocumentLinks)
-  FROM Contact
-  WHERE Id = :contact_id
-  LIMIT 1
-];
+// ID contact_id = '003e20000057f8UAAQ';
+ID contact_id = '003e2000004CQ7hAAG';
 
-List<String> contentDocumentIds = new List<String>();
-for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
-  contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
-
-List<ContentVersion> contentVersions = Database.query(
-  'SELECT ' +
-    String.join(contentVersionFields, ', ') +
-    ' FROM ContentVersion WHERE ContentDocumentId IN (' +
-    String.join(contentDocumentIds, ', ') +
-    ') AND IsLatest = TRUE'
+List<SObject> rels = Database.query(
+  'SELECT' +
+    '	seven20__Document__r.seven20__External_Id__c, seven20__Document__r.seven20__Type__c' +
+    ' FROM seven20__Document_Relationship__c WHERE seven20__Contact__c = \'' +
+    contact_id +
+    '\''
 );
 
-System.debug(contentVersions);
+for (SObject rel : rels) {
+  SObject doc = rel.getSObject('seven20__Document__r');
+  System.debug(
+    'External Id: ' +
+      doc.get('seven20__External_Id__c') +
+      ', Type: ' +
+      doc.get('seven20__Type__c')
+  );
+}

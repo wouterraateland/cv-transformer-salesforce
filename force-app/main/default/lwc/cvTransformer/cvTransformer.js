@@ -7,6 +7,7 @@ import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
 import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
+import { getRecord } from "lightning/uiRecordApi";
 
 export default class CVTransformer extends LightningElement {
   @api recordId;
@@ -17,6 +18,9 @@ export default class CVTransformer extends LightningElement {
   organization_id;
   candidate_id;
   candidate_secret_editable;
+
+  external_candidate_data;
+  iframe_ready = false;
 
   @wire(contactDataGet, { contact_id: "$recordId" })
   wiredData({ error, data }) {
@@ -29,6 +33,35 @@ export default class CVTransformer extends LightningElement {
       this.error = error;
       this.state = "error";
     }
+  }
+
+  postIframeWhenReady() {
+    if (!this.iframe_ready) return;
+    const iframe = this.template.querySelector("iframe");
+    if (!iframe || !iframe.contentWindow) return;
+
+    iframe.contentWindow.postMessage(
+      {
+        avatar: null,
+        id: this.recordId,
+        name: "",
+        type: "external-candidate-data",
+        url: window.location.href,
+        values: this.external_candidate_data
+      },
+      this.iframeUrl
+    );
+  }
+
+  @wire(getRecord, {
+    recordId: "$recordId",
+    layoutTypes: ["Full"],
+    modes: ["View"]
+  })
+  wiredRecord({ data }) {
+    if (!data) return;
+    this.external_candidate_data = data.fields;
+    this.postIframeWhenReady();
   }
 
   get isLoading() {
@@ -80,6 +113,15 @@ export default class CVTransformer extends LightningElement {
     this.state = "edit";
   }
 
+  setError(error) {
+    console.log(error);
+    if (error.body && error.body.message) this.error = error.body.message;
+    else if (error.message) this.error = error.message;
+    else if (typeof error === "string") this.error = error;
+    else if (error instanceof Error) this.error = error.toString();
+    else this.error = "An unknown error occurred.";
+  }
+
   async onSetupSubmit(event) {
     event.preventDefault();
     this.state = "loading";
@@ -92,7 +134,7 @@ export default class CVTransformer extends LightningElement {
       this.state = "edit";
     } catch (error) {
       this.data = {};
-      this.error = error.body.message;
+      this.setError(error);
       this.state = "setup";
     }
   }
@@ -114,7 +156,7 @@ export default class CVTransformer extends LightningElement {
       this.data = { ...this.data, language };
       this.error = null;
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "configure";
   }
@@ -135,7 +177,7 @@ export default class CVTransformer extends LightningElement {
       this.data = { ...this.data, color_scheme };
       this.error = null;
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "configure";
   }
@@ -146,26 +188,33 @@ export default class CVTransformer extends LightningElement {
       this.data = await contactTransformCv({ contact_id: this.recordId });
       this.error = null;
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "edit";
   }
 
   async onCandidateSelect() {
     // eslint-disable-next-line no-alert
-    const candidate_id = prompt(
-      "Enter candidate ID. (https://cv-transformer.com/organizations/{{organization_id}}/candidates/{{candidate_id}})"
+    const candidate_id_or_url = prompt(
+      "Enter CV-Transformer candidate ID or URL"
     );
+    let candidate_id = "";
+    try {
+      const url = new URL(candidate_id_or_url);
+      candidate_id = url.pathname.split("/").pop();
+    } catch {
+      candidate_id = candidate_id_or_url;
+    }
     if (!candidate_id) return;
     this.state = "loading";
     try {
       this.data = await candidateLink({
-        contact_id: this.recordId,
-        candidate_id
+        candidate_id,
+        contact_id: this.recordId
       });
       this.error = null;
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "edit";
   }
@@ -177,7 +226,7 @@ export default class CVTransformer extends LightningElement {
       this.data = { ...this.data, candidate_id: null, candidate_secret: null };
       this.error = null;
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "edit";
   }
@@ -197,7 +246,7 @@ export default class CVTransformer extends LightningElement {
           content_version_id: event.detail
         });
     } catch (error) {
-      this.error = error.body.message;
+      this.setError(error);
     }
     this.state = "edit";
   }
@@ -206,23 +255,30 @@ export default class CVTransformer extends LightningElement {
     if (
       typeof event.data !== "object" ||
       event.data === null ||
-      Array.isArray(event.data) ||
-      event.data.type !== "candidate-export" ||
-      typeof event.data.export_type !== "string"
+      Array.isArray(event.data)
     )
       return;
-
-    this.state = "loading";
-    try {
-      await candidateExportCV({
-        contact_id: this.recordId,
-        export_type: event.data.export_type
-      });
-      window.location.reload();
-    } catch (error) {
-      this.error = error.body.message;
+    if (
+      event.data.type === "candidate-export" &&
+      typeof event.data.export_type === "string"
+    ) {
+      this.state = "loading";
+      try {
+        await candidateExportCV({
+          contact_id: this.recordId,
+          export_type: event.data.export_type
+        });
+        window.location.reload();
+      } catch (error) {
+        this.setError(error);
+      }
+      this.state = "edit";
     }
-    this.state = "edit";
+
+    if (event.data.type === "iframe-ready") {
+      this.iframe_ready = true;
+      this.postIframeWhenReady();
+    }
   }
 
   connectedCallback() {

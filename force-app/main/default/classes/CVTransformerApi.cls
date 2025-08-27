@@ -245,6 +245,29 @@ public with sharing class CVTransformerApi {
     return http.send(request);
   }
 
+  public static HttpResponse attachSeven20AWS(
+    String api_key,
+    String candidate_id,
+    String location,
+    String aws_file_id
+  ) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:' +
+        nsPrefix('API') +
+        '/candidates/' +
+        candidate_id +
+        '/attach-from-seven20-aws?location=' +
+        location +
+        '&aws_file_id=' +
+        aws_file_id
+    );
+    request.setMethod('POST');
+    request.setHeader('Authorization', 'Bearer ' + api_key);
+    Http http = new Http();
+    return http.send(request);
+  }
+
   @AuraEnabled(cacheable=true)
   public static UtilPageData utilDataGet() {
     List<CVTransformerConfiguration__c> configs = [
@@ -461,12 +484,34 @@ public with sharing class CVTransformerApi {
             FROM ContentVersion
             WHERE ContentDocumentId IN :contentDocumentIds AND IsLatest = TRUE
           ];
-      if (!contentVersions.isEmpty()) {
-        ContentVersion contentVersion = contentVersions[0];
-        if (contentVersion != null)
-          attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersion);
-      }
+      if (!contentVersions.isEmpty())
+        attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersions[0]);
     }
+
+    if (contactFields.contains('seven20__cv_file_id__c'))
+      try {
+        List<SObject> rels = Database.query(
+          'SELECT' +
+            '	seven20__Document__r.seven20__External_Id__c, seven20__Document__r.seven20__Type__c' +
+            ' FROM seven20__Document_Relationship__c WHERE seven20__Contact__c = \'' +
+            contact_id +
+            '\''
+        );
+
+        for (SObject rel : rels) {
+          SObject doc = rel.getSObject('seven20__Document__r');
+          String type = (String) doc.get('seven20__Type__c');
+          if (type == 'CV')
+            attachSeven20AWS(
+              config.api_key__c,
+              contact.cvt_id__c,
+              'cv',
+              (String) doc.get('seven20__External_Id__c')
+            );
+        }
+      } catch (Exception e) {
+        System.debug('Error attaching seven20 documents: ' + e.getMessage());
+      }
 
     update contact;
 

@@ -53,6 +53,19 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testAttachSeven20AWS() {
+    Test.setMock(HttpCalloutMock.class, new CVTransformerApiMock());
+    Test.startTest();
+    HttpResponse response = CVTransformerApi.attachSeven20AWS(
+      'test_api_key',
+      '12345',
+      'cv',
+      '67890'
+    );
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+  }
+  @isTest
   static void testUtilDataGet() {
     Test.startTest();
     CVTransformerApi.UtilPageData response = CVTransformerApi.utilDataGet();
