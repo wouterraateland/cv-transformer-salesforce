@@ -1,5 +1,6 @@
 import { LightningElement, api, track, wire } from "lwc";
 import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
+import candidateContextGet from "@salesforce/apex/CVTransformerApi.candidateContextGet";
 import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
 import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
 import candidateUnlink from "@salesforce/apex/CVTransformerApi.candidateUnlink";
@@ -7,7 +8,6 @@ import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
 import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
-import { getRecord } from "lightning/uiRecordApi";
 
 export default class CVTransformer extends LightningElement {
   @api recordId;
@@ -53,15 +53,15 @@ export default class CVTransformer extends LightningElement {
     );
   }
 
-  @wire(getRecord, {
-    recordId: "$recordId",
-    layoutTypes: ["Full"],
-    modes: ["View"]
-  })
-  wiredRecord({ data }) {
+  @wire(candidateContextGet, { contact_id: "$recordId" })
+  wiredContext({ data }) {
     if (!data) return;
-    this.external_candidate_data = data.fields;
-    this.postIframeWhenReady();
+    try {
+      this.external_candidate_data = JSON.parse(data);
+      this.postIframeWhenReady();
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   get isLoading() {

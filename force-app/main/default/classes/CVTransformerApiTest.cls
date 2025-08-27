@@ -123,6 +123,142 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testCandidateContextAppendBase() {
+    Contact contact = new Contact();
+    contact.FirstName = 'Test';
+    contact.LastName = 'Example';
+    contact.Email = 'test@example.com';
+    contact.OtherPhone = '123-456-7890';
+    contact.MobilePhone = '123-456-7890';
+    contact.HomePhone = '123-456-7890';
+    contact.Phone = '123-456-7890';
+    contact.Birthdate = Date.valueOf('1990-01-01');
+    contact.Description = 'Some description';
+    contact.OtherCountry = 'Test country';
+    contact.OtherCity = 'Test city';
+    contact.OtherState = 'Test state';
+    contact.OtherStreet = '123 Test St';
+    contact.OtherPostalCode = '12345';
+    contact.MailingCountry = 'Test country';
+    contact.MailingCity = 'Test city';
+    contact.MailingState = 'Test state';
+    contact.MailingStreet = '123 Test St';
+    contact.MailingPostalCode = '12345';
+    Map<String, Object> data = new Map<String, Object>();
+    Test.startTest();
+    CVTransformerApi.candidateContextAppendBase(data, contact);
+    Test.stopTest();
+    System.assertNotEquals(
+      null,
+      data.get('email'),
+      'Expected email to be non-null'
+    );
+  }
+
+  @isTest
+  static void testCandidateContextAppendBaseEmpty() {
+    Contact contact = new Contact();
+    Map<String, Object> data = new Map<String, Object>();
+    Test.startTest();
+    CVTransformerApi.candidateContextAppendBase(data, contact);
+    Test.stopTest();
+    System.assertEquals(null, data.get('email'), 'Expected email to be empty');
+  }
+
+  @isTest
+  static void testCandidateContextAppendSeven20() {
+    Map<String, Object> seven20 = new Map<String, Object>();
+    seven20.put('seven20__Available_From__c', '2025-01-01');
+    seven20.put('seven20__Current_Day_Rate__c', 500);
+    seven20.put('seven20__Current_Employment_Type__c', 'Permanent');
+    seven20.put('seven20__Current_Salary__c', 60000);
+    seven20.put('seven20__Desired_Day_Rate__c', 700);
+    seven20.put('seven20__Desired_Employment_Type__c', 'Contract');
+    seven20.put('seven20__Desired_Salary__c', 80000);
+    seven20.put('seven20__Driving_Licence__c', true);
+    seven20.put('seven20__Highest_Education_Level__c', 'Bachelor');
+    seven20.put('seven20__Job_Description__c', 'Experienced developer');
+    seven20.put('seven20__Languages__c', 'English, Spanish');
+    seven20.put('seven20__LinkedIn__c', 'https://linkedin.com/in/test');
+    seven20.put('seven20__No_of_Years_Experience__c', 5);
+    seven20.put('seven20__Notice_Period__c', '2 weeks');
+    seven20.put('seven20__Open_to_Relocation__c', true);
+    seven20.put('seven20__University__c', 'Test University');
+    seven20.put('seven20__Work_Experience_Total_Months__c', 60);
+    Map<String, Object> edu1 = new Map<String, Object>();
+    edu1.put('seven20__Comments__c', 'Some comments');
+    edu1.put('seven20__Degree_Name__c', 'Computer Science');
+    edu1.put('seven20__Degree_Subject__c', 'Software Engineering');
+    edu1.put('seven20__Degree_Type__c', 'Bachelor');
+    edu1.put('seven20__End_Date__c', '2020-06-01');
+    edu1.put('seven20__Graduation_Date__c', '2020-06-01');
+    edu1.put('seven20__Measure_Value__c', 'First Class');
+    edu1.put('seven20__School_Name__c', 'Test School');
+    edu1.put('seven20__School_Type__c', 'University');
+    edu1.put('seven20__Start_Date__c', '2017-09-01');
+    List<Object> educationHistory = new List<Object>();
+    educationHistory.add(edu1);
+    seven20.put('seven20__Education_History__r', educationHistory);
+    Map<String, Object> emp1 = new Map<String, Object>();
+    emp1.put('seven20__Description__c', 'Worked on various projects');
+    emp1.put('seven20__End_Date__c', '2023-12-31');
+    emp1.put('seven20__Job_Title__c', 'Software Engineer');
+    emp1.put('seven20__Start_Date__c', '2021-01-01');
+    List<Object> employmentHistory = new List<Object>();
+    employmentHistory.add(emp1);
+    seven20.put('seven20__Employment_History__r', employmentHistory);
+    Map<String, Object> data = new Map<String, Object>();
+    Test.startTest();
+    CVTransformerApi.candidateContextAppendSeven20(data, seven20);
+    Test.stopTest();
+    System.assertNotEquals(
+      null,
+      data.get('currentSalary'),
+      'Expected currentSalary to be non-null'
+    );
+  }
+
+  @isTest
+  static void testCandidateContextAppendSeven20Empty() {
+    Map<String, Object> seven20 = new Map<String, Object>();
+    Map<String, Object> data = new Map<String, Object>();
+    Test.startTest();
+    CVTransformerApi.candidateContextAppendSeven20(data, seven20);
+    Test.stopTest();
+    System.assertEquals(
+      null,
+      data.get('currentSalary'),
+      'Expected currentSalary to be empty'
+    );
+  }
+
+  @isTest
+  static void testCandidateContextGet() {
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    Test.startTest();
+    String response = CVTransformerApi.candidateContextGet(contact.Id);
+    Test.stopTest();
+    System.assertNotEquals(null, response, 'Expected non-null response');
+  }
+
+  @isTest
+  static void testCandidateContextGetSeven20OutsideOfSeven20() {
+    CVTransformerApi.contactFields.add('seven20__cv_file_id__c');
+
+    Contact contact = [SELECT Id FROM Contact LIMIT 1];
+    Test.startTest();
+    try {
+      String response = CVTransformerApi.candidateContextGet(contact.Id);
+      System.assert(false, 'Expected exception not thrown');
+    } catch (Exception e) {
+      System.assert(true, 'Expected contact error');
+    }
+    Test.stopTest();
+
+    CVTransformerApi.contactFields.remove('seven20__cv_file_id__c');
+  }
+
+  @isTest
   static void testGetRelatedContentVersions() {
     // Create a test record
     Account testAccount = new Account(Name = 'Test Account');
