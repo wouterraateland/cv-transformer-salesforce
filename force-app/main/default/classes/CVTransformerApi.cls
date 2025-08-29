@@ -701,7 +701,7 @@ public with sharing class CVTransformerApi {
               String.join(contentVersionFields, ', ') +
               ' FROM ContentVersion WHERE ContentDocumentId IN (' +
               String.join(contentDocumentIds, ', ') +
-              ') AND IsLatest = TRUE AND seven20__file_type__c = \'CV\''
+              ') AND IsLatest = TRUE AND seven20__file_type__c IN (\'CV\', \'CV (PDF Converted)\', \'CV (Parser)\')'
           )
         : [
             SELECT Id, Title, VersionData, FileType
@@ -725,7 +725,11 @@ public with sharing class CVTransformerApi {
         for (SObject rel : rels) {
           SObject doc = rel.getSObject('seven20__Document__r');
           String type = (String) doc.get('seven20__Type__c');
-          if (type == 'CV')
+          if (
+            type == 'CV' ||
+            type == 'CV (PDF Converted)' ||
+            type == 'CV (Parser)'
+          )
             attachSeven20AWS(
               config.api_key__c,
               contact.cvt_id__c,

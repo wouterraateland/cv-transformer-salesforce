@@ -71,9 +71,11 @@ export default class CVTransformerUtility extends NavigationMixin(
     event.preventDefault();
     this.state = "loading";
     try {
-      const organization_id = await configUpsert({
-        api_key: event.target.api_key.value
-      });
+      const inputs = [...this.template.querySelectorAll("lightning-input")];
+      const values = Object.fromEntries(
+        inputs.map((input) => [input.name, input.value])
+      );
+      const organization_id = await configUpsert({ api_key: values.api_key });
       this.data = { ...this.data, organization_id };
       this.error = null;
       this.state = "edit";

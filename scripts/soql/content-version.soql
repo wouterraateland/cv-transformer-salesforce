@@ -41,6 +41,5 @@ SELECT
 FROM Contact
 WHERE Id = '003QH00000KOe5eYAD'
 
-
 // seven20__Education_History__c
   // seven20__Employment_History__c

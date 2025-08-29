@@ -1,3 +1,31 @@
+List<ContentVersion> contentVersions = Database.query(
+  'SELECT seven20__file_type__c FROM ContentVersion WHERE IsLatest = TRUE LIMIT 100'
+);
+System.debug(JSON.serializePretty(contentVersions));
+
+Set<String> contentVersionFields = Schema.getGlobalDescribe()
+  .get('ContentVersion')
+  .getDescribe()
+  .fields.getMap()
+  .keySet();
+
+Contact contact = [
+  SELECT (SELECT ContentDocumentId FROM ContentDocumentLinks)
+  FROM Contact
+  WHERE Id = '0034L00000bky06QAA'
+];
+List<String> contentDocumentIds = new List<String>();
+for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
+  contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
+List<ContentVersion> contentVersions = Database.query(
+  'SELECT ' +
+    String.join(contentVersionFields, ', ') +
+    ' FROM ContentVersion WHERE ContentDocumentId IN (' +
+    String.join(contentDocumentIds, ', ') +
+    ') AND IsLatest = TRUE AND seven20__file_type__c IN (\'CV\', \'CV (PDF Converted)\', \'CV (Parser)\')'
+);
+System.debug(JSON.serializePretty(contentVersions));
+
 Contact contact = [
   SELECT
     Birthdate,
