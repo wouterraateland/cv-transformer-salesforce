@@ -201,12 +201,16 @@ public with sharing class CVTransformerApi {
   public static String getMimeType(String fileType) {
     Map<String, String> mimeMap = new Map<String, String>{
       'DOC' => 'application/msword',
+      'WORD' => 'application/msword',
       'DOCX' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'WORD_X' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'JPG' => 'image/jpeg',
+      'JPEG' => 'image/jpeg',
       'PDF' => 'application/pdf',
       'PNG' => 'image/png',
       'WEBP' => 'image/webp',
-      'TXT' => 'text/plain'
+      'TXT' => 'text/plain',
+      'TEXT' => 'text/plain'
     };
     return mimeMap.containsKey(fileType)
       ? mimeMap.get(fileType)
@@ -911,7 +915,7 @@ public with sharing class CVTransformerApi {
 
     // Step 4: Set Contact.seven20__cv_file_id__c when empty
     if (
-      contentVersionFields.contains('seven20__cv_file_id__c') &&
+      contactFields.contains('seven20__cv_file_id__c') &&
       contact.get('seven20__cv_file_id__c') == null
     ) {
       contact.put('seven20__cv_file_id__c', contentDoc.Id);

@@ -1,4 +1,14 @@
 SELECT
+  Name,
+  CreatedDate,
+  CVTransformer__cvt_id__c,
+  seven20__cv_file_id__c
+FROM Contact
+ORDER BY CreatedDate DESC
+LIMIT 10
+WHERE ID = '003e20000074bEhAAI'
+
+SELECT
   seven20__Available_From__c,
   seven20__Current_Day_Rate__c,
   seven20__Current_Employment_Type__c,
@@ -39,7 +49,7 @@ SELECT
     FROM seven20__Employment_History__r
   )
 FROM Contact
-WHERE Id = '003QH00000KOe5eYAD'
+WHERE Id = '003e20000074bEhAAI'
 
 // seven20__Education_History__c
   // seven20__Employment_History__c

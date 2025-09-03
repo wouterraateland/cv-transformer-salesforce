@@ -12,7 +12,7 @@ Set<String> contentVersionFields = Schema.getGlobalDescribe()
 Contact contact = [
   SELECT (SELECT ContentDocumentId FROM ContentDocumentLinks)
   FROM Contact
-  WHERE Id = '0034L00000bky06QAA'
+  WHERE Id = '003e20000074bEhAAI'
 ];
 List<String> contentDocumentIds = new List<String>();
 for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
