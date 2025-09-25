@@ -1,5 +1,6 @@
 import { LightningElement, api, track, wire } from "lwc";
 import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
+import candidateAttachmentsList from "@salesforce/apex/CVTransformerApi.candidateAttachmentsList";
 import candidateContextGet from "@salesforce/apex/CVTransformerApi.candidateContextGet";
 import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
 import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
@@ -8,6 +9,7 @@ import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
 import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
+import contentVersionDataGet from "@salesforce/apex/CVTransformerApi.contentVersionDataGet";
 
 export default class CVTransformer extends LightningElement {
   @api recordId;
@@ -19,7 +21,8 @@ export default class CVTransformer extends LightningElement {
   candidate_id;
   candidate_secret_editable;
 
-  external_candidate_data;
+  external_attachments = [];
+  external_candidate_data = null;
   iframe_ready = false;
 
   @wire(contactDataGet, { contact_id: "$recordId" })
@@ -42,12 +45,22 @@ export default class CVTransformer extends LightningElement {
 
     iframe.contentWindow.postMessage(
       {
-        avatar: null,
+        avatar: this.external_candidate_data?.avatar || null,
         id: this.recordId,
-        name: "",
+        name:
+          (this.external_candidate_data?.firstName ?? "") +
+          " " +
+          (this.external_candidate_data?.lastName ?? ""),
         type: "external-candidate-data",
         url: window.location.href,
         values: this.external_candidate_data
+      },
+      this.iframeUrl
+    );
+    iframe.contentWindow.postMessage(
+      {
+        attachments: this.external_attachments ?? [],
+        type: "external-attachments"
       },
       this.iframeUrl
     );
@@ -58,6 +71,17 @@ export default class CVTransformer extends LightningElement {
     if (!data) return;
     try {
       this.external_candidate_data = JSON.parse(data);
+      this.postIframeWhenReady();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  @wire(candidateAttachmentsList, { contact_id: "$recordId" })
+  wiredAttachments({ data }) {
+    if (!data) return;
+    try {
+      this.external_attachments = JSON.parse(data);
       this.postIframeWhenReady();
     } catch (error) {
       console.log(error);
@@ -260,6 +284,7 @@ export default class CVTransformer extends LightningElement {
       Array.isArray(event.data)
     )
       return;
+
     if (
       event.data.type === "candidate-export" &&
       typeof event.data.export_type === "string"
@@ -280,6 +305,23 @@ export default class CVTransformer extends LightningElement {
     if (event.data.type === "iframe-ready") {
       this.iframe_ready = true;
       this.postIframeWhenReady();
+    }
+
+    if (event.data.type === "content-version-base64-request") {
+      const iframe = this.template.querySelector("iframe");
+      if (!iframe || !iframe.contentWindow) return;
+
+      const { base64, extension, title } = await contentVersionDataGet({
+        content_version_id: event.data.content_version_id
+      });
+      let filename = title;
+      if (!filename.toLowerCase().endsWith(`.${extension.toLowerCase()}`))
+        filename += `.${extension.toLowerCase()}`;
+
+      iframe.contentWindow.postMessage(
+        { base64, filename, type: "content-version-base64-response" },
+        this.iframeUrl
+      );
     }
   }
 

@@ -346,6 +346,8 @@ public with sharing class CVTransformerApi {
       );
     if (seven20Data.get('seven20__Current_Salary__c') != null)
       data.put('currentSalary', seven20Data.get('seven20__Current_Salary__c'));
+    if (seven20Data.get('seven20__Daxtra_Id__c') != null)
+      data.put('daxtraId', seven20Data.get('seven20__Daxtra_Id__c'));
     if (seven20Data.get('seven20__Desired_Day_Rate__c') != null)
       data.put(
         'desiredDayRate',
@@ -389,6 +391,8 @@ public with sharing class CVTransformerApi {
         'openToRelocation',
         seven20Data.get('seven20__Open_to_Relocation__c')
       );
+    if (seven20Data.get('seven20__Profile_Image_URL__c') != null)
+      data.put('avatar', seven20Data.get('seven20__Profile_Image_URL__c'));
     if (seven20Data.get('seven20__University__c') != null)
       data.put('university', seven20Data.get('seven20__University__c'));
     if (seven20Data.get('seven20__Work_Experience_Total_Months__c') != null)
@@ -480,6 +484,7 @@ public with sharing class CVTransformerApi {
           'seven20__Current_Day_Rate__c,' +
           'seven20__Current_Employment_Type__c,' +
           'seven20__Current_Salary__c,' +
+          'seven20__Daxtra_Id__c,' +
           'seven20__Desired_Day_Rate__c,' +
           'seven20__Desired_Employment_Type__c,' +
           'seven20__Desired_Salary__c,' +
@@ -491,6 +496,7 @@ public with sharing class CVTransformerApi {
           'seven20__No_of_Years_Experience__c,' +
           'seven20__Notice_Period__c,' +
           'seven20__Open_to_Relocation__c,' +
+          'seven20__Profile_Image_URL__c,' +
           'seven20__University__c,' +
           'seven20__Work_Experience_Total_Months__c,' +
           '(' +
@@ -528,6 +534,83 @@ public with sharing class CVTransformerApi {
     }
 
     return JSON.serialize(data);
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static String candidateAttachmentsList(Id contact_id) {
+    List<Map<String, String>> attachments = new List<Map<String, String>>();
+
+    List<ContentDocumentLink> cdls = (contentVersionFields.contains(
+        'seven20__file_type__c'
+      ))
+      ? Database.query(
+          'SELECT ' +
+            'ContentDocument.LatestPublishedVersion.Id, ' +
+            'ContentDocument.LatestPublishedVersion.Title ' +
+            'FROM ContentDocumentLink ' +
+            'WHERE ContentDocument.LatestPublishedVersion.seven20__file_type__c IN (\'CV\', \'CV (Parser)\', \'CV (PDF Converted)\') ' +
+            'AND LinkedEntityId = \'' +
+            contact_id +
+            '\''
+        )
+      : [
+          SELECT
+            ContentDocument.LatestPublishedVersion.Id,
+            ContentDocument.LatestPublishedVersion.Title
+          FROM ContentDocumentLink
+          WHERE LinkedEntityId = :contact_id
+        ];
+
+    for (ContentDocumentLink cdl : cdls) {
+      ContentVersion cv = cdl.ContentDocument.LatestPublishedVersion;
+      Map<String, String> attachment = new Map<String, String>();
+      attachment.put('id', cv.Id);
+      attachment.put('title', cv.Title);
+      attachment.put('type', 'Salesforce');
+      attachments.add(attachment);
+    }
+
+    if (contactFields.contains('seven20__cv_file_id__c')) {
+      List<SObject> rels = Database.query(
+        'SELECT ' +
+          'seven20__External_Id__c, seven20__File_Name__c ' +
+          'FROM seven20__Document__c ' +
+          'WHERE seven20__Type__c IN (\'CV\', \'CV (Parser)\', \'CV (PDF Converted)\')' +
+          'AND Id IN (' +
+          'SELECT seven20__Document__c ' +
+          'FROM seven20__Document_Relationship__c ' +
+          'WHERE seven20__Contact__c = \'' +
+          contact_id +
+          '\')'
+      );
+
+      for (SObject rel : rels) {
+        Map<String, String> attachment = new Map<String, String>();
+        attachment.put('id', (String) rel.get('seven20__External_Id__c'));
+        attachment.put('title', (String) rel.get('seven20__File_Name__c'));
+        attachment.put('type', 'Seven20AWS');
+        attachments.add(attachment);
+      }
+    }
+
+    return JSON.serialize(attachments);
+  }
+
+  @AuraEnabled
+  public static Map<String, String> contentVersionDataGet(
+    Id content_version_id
+  ) {
+    ContentVersion cv = [
+      SELECT FileExtension, Title, VersionData
+      FROM ContentVersion
+      WHERE Id = :content_version_id
+      LIMIT 1
+    ];
+    Map<String, String> data = new Map<String, String>();
+    data.put('base64', EncodingUtil.base64Encode(cv.VersionData));
+    data.put('extension', cv.FileExtension);
+    data.put('title', cv.Title);
+    return data;
   }
 
   @AuraEnabled(cacheable=true)
@@ -673,10 +756,7 @@ public with sharing class CVTransformerApi {
       LIMIT 1
     ];
     Contact contact = [
-      SELECT
-        cvt_id__c,
-        cvt_secret__c,
-        (SELECT ContentDocumentId FROM ContentDocumentLinks)
+      SELECT cvt_id__c, cvt_secret__c
       FROM Contact
       WHERE Id = :contact_id
       LIMIT 1
@@ -688,62 +768,6 @@ public with sharing class CVTransformerApi {
 
     contact.cvt_id__c = candidate.id;
     contact.cvt_secret__c = candidate.secret_editable;
-
-    if (!contact.ContentDocumentLinks.isEmpty()) {
-      List<String> contentDocumentIds = new List<String>();
-      if (contentVersionFields.contains('seven20__file_type__c'))
-        for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
-          contentDocumentIds.add('\'' + cdl.ContentDocumentId + '\'');
-      else
-        for (ContentDocumentLink cdl : contact.ContentDocumentLinks)
-          contentDocumentIds.add(cdl.ContentDocumentId);
-      List<ContentVersion> contentVersions = contentVersionFields.contains(
-          'seven20__file_type__c'
-        )
-        ? Database.query(
-            'SELECT ' +
-              String.join(contentVersionFields, ', ') +
-              ' FROM ContentVersion WHERE ContentDocumentId IN (' +
-              String.join(contentDocumentIds, ', ') +
-              ') AND IsLatest = TRUE AND seven20__file_type__c IN (\'CV\', \'CV (PDF Converted)\', \'CV (Parser)\')'
-          )
-        : [
-            SELECT Id, Title, VersionData, FileType
-            FROM ContentVersion
-            WHERE ContentDocumentId IN :contentDocumentIds AND IsLatest = TRUE
-          ];
-      if (!contentVersions.isEmpty())
-        attach(config.api_key__c, contact.cvt_id__c, 'cv', contentVersions[0]);
-    }
-
-    if (contactFields.contains('seven20__cv_file_id__c'))
-      try {
-        List<SObject> rels = Database.query(
-          'SELECT' +
-            '	seven20__Document__r.seven20__External_Id__c, seven20__Document__r.seven20__Type__c' +
-            ' FROM seven20__Document_Relationship__c WHERE seven20__Contact__c = \'' +
-            contact_id +
-            '\''
-        );
-
-        for (SObject rel : rels) {
-          SObject doc = rel.getSObject('seven20__Document__r');
-          String type = (String) doc.get('seven20__Type__c');
-          if (
-            type == 'CV' ||
-            type == 'CV (PDF Converted)' ||
-            type == 'CV (Parser)'
-          )
-            attachSeven20AWS(
-              config.api_key__c,
-              contact.cvt_id__c,
-              'cv',
-              (String) doc.get('seven20__External_Id__c')
-            );
-        }
-      } catch (Exception e) {
-        System.debug('Error attaching seven20 documents: ' + e.getMessage());
-      }
 
     update contact;
 
@@ -843,12 +867,20 @@ public with sharing class CVTransformerApi {
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
-    Contact contact = [
-      SELECT cvt_id__c, cvt_secret__c
-      FROM Contact
-      WHERE Id = :contact_id
-      LIMIT 1
-    ];
+    Contact contact = contactFields.contains('seven20__cv_file_id__c')
+      ? Database.query(
+          'SELECT' +
+            '	cvt_id__c, cvt_secret__c, seven20__cv_file_id__c' +
+            ' FROM Contact WHERE Id = \'' +
+            contact_id +
+            '\''
+        )
+      : [
+          SELECT cvt_id__c, cvt_secret__c
+          FROM Contact
+          WHERE Id = :contact_id
+          LIMIT 1
+        ];
     CVTransformerCandidate candidate = candidateGet(
       config.api_key__c,
       contact.cvt_id__c
@@ -877,9 +909,22 @@ public with sharing class CVTransformerApi {
 
     String contentType = response.getHeader('Content-Type');
     String contentDisposition = response.getHeader('Content-Disposition');
-    String fileName = contentDisposition.replaceAll('.*filename=', '');
-    fileName = fileName.replaceAll('\"', '');
-    fileName = fileName.replaceAll(';.*', '');
+
+    String fileName = '';
+    for (String part : contentDisposition.split(';')) {
+      part = part.trim();
+
+      if (part.contains('filename*=')) {
+        part = part.replaceAll('filename\\*=', '');
+        List<String> subparts = part.split('\'\'');
+        if (subparts.size() == 2)
+          fileName = EncodingUtil.urlDecode(subparts[1], subparts[0]);
+      }
+
+      if (part.contains('filename=') && filename == '')
+        filename = part.replaceAll('filename=', '').replaceAll('"', '').trim();
+    }
+
     Blob fileBody = response.getBodyAsBlob();
 
     // Step 1: Insert ContentVersion
