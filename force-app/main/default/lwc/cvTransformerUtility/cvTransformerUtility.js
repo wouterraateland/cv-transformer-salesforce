@@ -1,6 +1,5 @@
 import { LightningElement, track, wire } from "lwc";
 import { NavigationMixin } from "lightning/navigation";
-import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactCreate from "@salesforce/apex/CVTransformerApi.contactCreate";
 import utilDataGet from "@salesforce/apex/CVTransformerApi.utilDataGet";
@@ -39,22 +38,8 @@ export default class CVTransformerUtility extends NavigationMixin(
     return this.state === "setup";
   }
 
-  get isConfigure() {
-    return this.state === "configure";
-  }
-
   get isError() {
     return this.state === "error";
-  }
-
-  onConfigure() {
-    this.error = null;
-    this.state = "configure";
-  }
-
-  onConfigureCancel() {
-    this.error = null;
-    this.state = "edit";
   }
 
   onSetup() {
@@ -84,49 +69,6 @@ export default class CVTransformerUtility extends NavigationMixin(
       this.error = error.body.message;
       this.state = "setup";
     }
-  }
-
-  get languageWithDefault() {
-    return this.data.language || "en";
-  }
-  languageOptions = [
-    { label: "English", value: "en" },
-    { label: "Deutsch", value: "de" },
-    { label: "Français", value: "fr" },
-    { label: "Nederlands", value: "nl" }
-  ];
-  async onLanguageChange(event) {
-    const language = event.detail.value;
-    this.state = "loading";
-    try {
-      await configUpdate({ color_schema: this.data.color_schema, language });
-      this.data = { ...this.data, language };
-      this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "configure";
-  }
-
-  get colorSchemeWithDefault() {
-    return this.data.color_scheme || "";
-  }
-  colorSchemeOptions = [
-    { label: "System default", value: "" },
-    { label: "Light", value: "light" },
-    { label: "Dark", value: "dark" }
-  ];
-  async onColorSchemeChange(event) {
-    const color_scheme = event.detail.value;
-    this.state = "loading";
-    try {
-      await configUpdate({ color_scheme, language: this.data.language });
-      this.data = { ...this.data, color_scheme };
-      this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "configure";
   }
 
   async onCvUpload(event) {

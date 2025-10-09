@@ -5,7 +5,6 @@ import candidateContextGet from "@salesforce/apex/CVTransformerApi.candidateCont
 import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
 import candidateLink from "@salesforce/apex/CVTransformerApi.candidateLink";
 import candidateUnlink from "@salesforce/apex/CVTransformerApi.candidateUnlink";
-import configUpdate from "@salesforce/apex/CVTransformerApi.configUpdate";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
 import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
@@ -100,31 +99,14 @@ export default class CVTransformer extends LightningElement {
     return this.state === "setup";
   }
 
-  get isConfigure() {
-    return this.state === "configure";
-  }
-
   get isError() {
     return this.state === "error";
   }
 
   get iframeUrl() {
-    let url = `https://www.cv-transformer.com/candidates/${this.data.candidate_id}?s=${this.data.candidate_secret}`;
-    if (this.data.color_scheme)
-      url += `&color_scheme=${this.data.color_scheme}`;
-    if (this.data.language) url += `&language=${this.data.language}`;
-    url += `&context=salesforce`;
-    return url;
-  }
-
-  onConfigure() {
-    this.error = null;
-    this.state = "configure";
-  }
-
-  onConfigureCancel() {
-    this.error = null;
-    this.state = "edit";
+    return `https://www.cv-transformer.com/candidates/${
+      this.data.candidate_id
+    }?s=${this.data.candidate_secret}&context=${this.data.ats}`;
   }
 
   onSetup() {
@@ -163,49 +145,6 @@ export default class CVTransformer extends LightningElement {
       this.setError(error);
       this.state = "setup";
     }
-  }
-
-  get languageWithDefault() {
-    return this.data.language || "en";
-  }
-  languageOptions = [
-    { label: "English", value: "en" },
-    { label: "Deutsch", value: "de" },
-    { label: "Français", value: "fr" },
-    { label: "Nederlands", value: "nl" }
-  ];
-  async onLanguageChange(event) {
-    const language = event.detail.value;
-    this.state = "loading";
-    try {
-      await configUpdate({ color_schema: this.data.color_schema, language });
-      this.data = { ...this.data, language };
-      this.error = null;
-    } catch (error) {
-      this.setError(error);
-    }
-    this.state = "configure";
-  }
-
-  get colorSchemeWithDefault() {
-    return this.data.color_scheme || "";
-  }
-  colorSchemeOptions = [
-    { label: "System default", value: "" },
-    { label: "Light", value: "light" },
-    { label: "Dark", value: "dark" }
-  ];
-  async onColorSchemeChange(event) {
-    const color_scheme = event.detail.value;
-    this.state = "loading";
-    try {
-      await configUpdate({ color_scheme, language: this.data.language });
-      this.data = { ...this.data, color_scheme };
-      this.error = null;
-    } catch (error) {
-      this.setError(error);
-    }
-    this.state = "configure";
   }
 
   async onCandidateCreate() {

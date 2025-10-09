@@ -167,8 +167,11 @@ public with sharing class CVTransformerApi {
     public String candidate_id;
     @AuraEnabled
     public String candidate_secret;
+    @AuraEnabled
+    public String ats;
 
     public ContactPageData() {
+      this.ats = CVTransformerApi.ats;
     }
 
     public ContactPageData(
@@ -180,6 +183,7 @@ public with sharing class CVTransformerApi {
       this.language = config.language__c;
       this.candidate_id = contact.cvt_id__c;
       this.candidate_secret = contact.cvt_secret__c;
+      this.ats = CVTransformerApi.ats;
     }
   }
 
@@ -197,6 +201,11 @@ public with sharing class CVTransformerApi {
   public static Set<String> contentVersionFields = listObjectFields(
     'ContentVersion'
   );
+  public static String ats = contactFields.contains('seven20__cv_file_id__c')
+    ? 'Seven20'
+    : contactFields.contains('msf__Place_of_birth__c')
+        ? 'MySolution'
+        : 'Salesforce';
 
   public static String getMimeType(String fileType) {
     Map<String, String> mimeMap = new Map<String, String>{
@@ -921,15 +930,15 @@ public with sharing class CVTransformerApi {
           fileName = EncodingUtil.urlDecode(subparts[1], subparts[0]);
       }
 
-      if (part.contains('filename=') && filename == '')
-        filename = part.replaceAll('filename=', '').replaceAll('"', '').trim();
+      if (part.contains('filename=') && fileName == '')
+        fileName = part.replaceAll('filename=', '').replaceAll('"', '').trim();
     }
 
     Blob fileBody = response.getBodyAsBlob();
 
     // Step 1: Insert ContentVersion
     ContentVersion contentVersion = new ContentVersion();
-    contentVersion.Title = fileName;
+    contentVersion.Title = fileName.replaceAll('\\.pdf$', '');
     contentVersion.PathOnClient = '/' + fileName;
     contentVersion.VersionData = fileBody;
     contentVersion.IsMajorVersion = true;

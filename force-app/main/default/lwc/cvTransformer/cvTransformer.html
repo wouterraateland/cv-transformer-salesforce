@@ -53,47 +53,10 @@
       </template>
     </lightning-card>
   </template>
-  <template lwc:if={isConfigure}>
-    <lightning-card title="CV-Transformer settings">
-      <lightning-button
-        label="Change API Key"
-        onclick={onSetup}
-        slot="actions"
-        type="button"
-        variant="brand"
-      ></lightning-button>
-      <lightning-radio-group
-        class="slds-var-m-around_medium"
-        label="Language"
-        onchange={onLanguageChange}
-        options={languageOptions}
-        value={languageWithDefault}
-      ></lightning-radio-group>
-      <lightning-radio-group
-        class="slds-var-m-around_medium"
-        label="Color Scheme"
-        onchange={onColorSchemeChange}
-        options={colorSchemeOptions}
-        value={colorSchemeWithDefault}
-      ></lightning-radio-group>
-      <lightning-button
-        label="Done"
-        onclick={onConfigureCancel}
-        slot="footer"
-        type="button"
-        variant="brand"
-      ></lightning-button>
-    </lightning-card>
-  </template>
   <template lwc:if={isEdit}>
     <lightning-card title="CV-Transformer">
       <lightning-layout slot="actions" style="gap: 0.5rem">
         <template lwc:if={data.candidate_id}>
-          <!-- <c-content-version-dropdown
-            record-id={recordId}
-            onselect={onAttachmentSelect}
-          >
-          </c-content-version-dropdown> -->
           <lightning-button-icon
             alternative-text="Unlink candidate"
             icon-name="utility:remove_link"
@@ -123,7 +86,7 @@
         <lightning-button-icon
           alternative-text="Configure"
           icon-name="utility:settings"
-          onclick={onConfigure}
+          onclick={onSetup}
           title="Configure"
           type="button"
           variant="container"

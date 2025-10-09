@@ -53,43 +53,6 @@
       </template>
     </form>
   </template>
-  <template lwc:if={isConfigure}>
-    <h2 class="slds-var-m-around_medium slds-text-heading_medium">
-      CV-Transformer settings
-    </h2>
-    <lightning-radio-group
-      class="slds-var-m-around_medium"
-      label="Language"
-      onchange={onLanguageChange}
-      options={languageOptions}
-      value={languageWithDefault}
-    ></lightning-radio-group>
-    <lightning-radio-group
-      class="slds-var-m-around_medium"
-      label="Color Scheme"
-      onchange={onColorSchemeChange}
-      options={colorSchemeOptions}
-      value={colorSchemeWithDefault}
-    ></lightning-radio-group>
-    <lightning-layout
-      class="slds-var-m-around_medium"
-      horizontal-align="end"
-      style="gap: 0.5rem"
-    >
-      <lightning-button
-        label="Change API Key"
-        onclick={onSetup}
-        type="button"
-        variant="neutral"
-      ></lightning-button>
-      <lightning-button
-        label="Done"
-        onclick={onConfigureCancel}
-        type="button"
-        variant="brand"
-      ></lightning-button>
-    </lightning-layout>
-  </template>
   <template lwc:if={isEdit}>
     <div class="slds-var-m-around_medium">
       <lightning-file-upload
@@ -103,8 +66,8 @@
     <div class="slds-var-m-around_medium">
       <lightning-button
         icon-name="utility:settings"
-        label="Configure"
-        onclick={onConfigure}
+        label="Change API key"
+        onclick={onSetup}
         type="button"
         variant="container"
       ></lightning-button>
