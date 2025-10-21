@@ -24,7 +24,7 @@
         horizontal-align="end"
         style="gap: 0.5rem"
       >
-        <template lwc:if={data.organization_id}>
+        <template lwc:if={organization_id}>
           <lightning-button
             label="Cancel"
             onclick={onSetupCancel}
@@ -38,7 +38,7 @@
           variant="brand"
         ></lightning-button>
       </lightning-layout>
-      <template lwc:if={data.organization_id}></template>
+      <template lwc:if={organization_id}></template>
       <template lwc:else>
         <p class="slds-var-m-around_medium">
           Don't have a CV-Transformer account yet?
@@ -67,7 +67,7 @@
       <lightning-button
         icon-name="utility:settings"
         label="Change API key"
-        onclick={onSetup}
+        onclick={onApiKeyChange}
         type="button"
         variant="container"
       ></lightning-button>

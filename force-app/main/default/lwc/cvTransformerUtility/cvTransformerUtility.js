@@ -1,28 +1,26 @@
-import { LightningElement, track, wire } from "lwc";
+import { LightningElement, wire } from "lwc";
 import { NavigationMixin } from "lightning/navigation";
 import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactCreate from "@salesforce/apex/CVTransformerApi.contactCreate";
-import utilDataGet from "@salesforce/apex/CVTransformerApi.utilDataGet";
+import organizationIdGet from "@salesforce/apex/CVTransformerApi.organizationIdGet";
 
 export default class CVTransformerUtility extends NavigationMixin(
   LightningElement
 ) {
-  @track data = {};
+  organization_id;
   error;
   state = "loading";
 
-  organization_id;
-
-  @wire(utilDataGet)
-  wiredData({ error, data }) {
-    if (data) {
-      this.data = data;
-      this.error = null;
-      this.state = this.data.organization_id ? "edit" : "setup";
-    } else if (error) {
-      this.data = {};
+  @wire(organizationIdGet)
+  wiredData({ data, error }) {
+    if (error) {
+      this.organization_id = null;
       this.error = error;
       this.state = "error";
+    } else {
+      this.organization_id = data;
+      this.error = null;
+      this.state = data ? "edit" : "setup";
     }
   }
 
@@ -30,21 +28,8 @@ export default class CVTransformerUtility extends NavigationMixin(
     return this.state === "loading";
   }
 
-  get isEdit() {
-    return this.state === "edit";
-  }
-
   get isSetup() {
     return this.state === "setup";
-  }
-
-  get isError() {
-    return this.state === "error";
-  }
-
-  onSetup() {
-    this.error = null;
-    this.state = "setup";
   }
 
   onSetupCancel() {
@@ -60,15 +45,18 @@ export default class CVTransformerUtility extends NavigationMixin(
       const values = Object.fromEntries(
         inputs.map((input) => [input.name, input.value])
       );
-      const organization_id = await configUpsert({ api_key: values.api_key });
-      this.data = { ...this.data, organization_id };
+      this.organization_id = await configUpsert({ api_key: values.api_key });
       this.error = null;
-      this.state = "edit";
+      this.state = this.organization_id ? "edit" : "setup";
     } catch (error) {
-      this.data = {};
+      this.organization_id = null;
       this.error = error.body.message;
       this.state = "setup";
     }
+  }
+
+  get isEdit() {
+    return this.state === "edit";
   }
 
   async onCvUpload(event) {
@@ -82,16 +70,18 @@ export default class CVTransformerUtility extends NavigationMixin(
         content_version_id: file.contentVersionId
       });
       this[NavigationMixin.Navigate]({
-        type: "standard__recordPage",
-        attributes: {
-          recordId: contact_id,
-          actionName: "view"
-        }
+        attributes: { actionName: "view", recordId: contact_id },
+        type: "standard__recordPage"
       });
       this.error = null;
     } catch (error) {
       this.error = error.body.message;
     }
     this.state = "edit";
+  }
+
+  onApiKeyChange() {
+    this.error = null;
+    this.state = "setup";
   }
 }

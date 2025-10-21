@@ -1,201 +1,173 @@
-Set<String> contactFields = new Set<String>(
-  Schema.getGlobalDescribe()
-    .get('Contact')
-    .getDescribe()
-    .fields.getMap()
-    .keySet()
-);
-
 Contact contact = [
-  SELECT
-    Birthdate,
-    Description,
-    Email,
-    FirstName,
-    HomePhone,
-    LastName,
-    MobilePhone,
-    OtherPhone,
-    Phone
+  SELECT Id
   FROM Contact
-  WHERE Id = '000'
+  ORDER BY CreatedDate DESC
+  LIMIT 1
+  OFFSET 1973
 ];
 
+String contactId = contact.id;
+
+String fieldnameNormalize(String fieldname) {
+  if (fieldname.startsWith('seven20__'))
+    fieldname = fieldname.substring(9);
+  if (fieldname.endsWith('__c'))
+    fieldname = fieldname.substring(0, fieldname.length() - 3);
+  if (fieldname.endsWith('__r'))
+    fieldname = fieldname.substring(0, fieldname.length() - 3);
+  return fieldname;
+}
+
+Set<String> blacklistedFields = new Set<String>{
+  'Accepts_Floats__c',
+  'AccountId',
+  'Ambition_Record_Type_Banner__c',
+  'AmbTech_Candidate__c',
+  'Candidate_Cleared__c',
+  'CreatedById',
+  'CreatedDate',
+  'CVTransformer__cvt_id__c',
+  'CVTransformer__cvt_secret__c',
+  'Dashboard_Access__c',
+  'Disable_Hot_Boss__c',
+  'DoNotCall',
+  'et4ae5__HasOptedOutOfMobile__c',
+  'Group_Office__c',
+  'HasOptedOutOfEmail',
+  'HomePhone',
+  'Hot_Boss__c',
+  'IsDeleted',
+  'IsEmailBounced',
+  'IsPriorityRecord',
+  'LastModifiedById',
+  'LastModifiedDate',
+  'LastReferencedDate',
+  'LastViewedDate',
+  'MobilePhone',
+  'Opted_In_SMS_Message__c',
+  'Opted_Out_Marketing_Emails__c',
+  'OtherPhone',
+  'Phone',
+  'PhotoUrl',
+  'Record_Type_Name',
+  'RecordTypeId',
+  'seven20__Account__c',
+  'seven20__Candidate__c',
+  'seven20__Candidate_Source_Detail__c',
+  'seven20__Candidate_Status__c',
+  'seven20__Created_via_Daxtra__c',
+  'seven20__CV_File_Id__c',
+  'seven20__CV_File_Name__c',
+  'seven20__Full_CV__c',
+  'seven20__Is_Indexed_on_Daxtra__c',
+  'seven20__Job__c',
+  'seven20__Job_ATS__c',
+  'seven20__Job_Board_Id__c',
+  'seven20__Job_Board_Id__c',
+  'seven20__Parser_Status__c',
+  'seven20__Record_Type_Name__c',
+  'seven20__Sync_Status__c',
+  'Status_Icon__c',
+  'SystemModstamp',
+  'Temp_Traitor__c',
+  'Temp_Traitor_Client__c',
+  'To_Archive__c',
+  'Traitor__c',
+  'tubl__TextUs_Indexed_Phone_3__c',
+  'tubl__TextUs_Indexed_Phone_5__c',
+  'tubl__TextUs_Phone__c'
+};
+
+Set<String> relevantChildRelationships = new Set<String>{
+  'seven20__Accounts__r',
+  'seven20__Applications__r',
+  'seven20__Candidate_Shifts__r',
+  'seven20__Compliances__r',
+  'seven20__Contacts__r',
+  'seven20__Education_History__r',
+  'seven20__Employment_History__r',
+  'seven20__Interviews__r',
+  'seven20__Job_Board_Applications__r',
+  'seven20__Job_Leads__r',
+  'seven20__Jobs__r',
+  'seven20__Placements__r',
+  'seven20__References__r',
+  'seven20__Relationships__r'
+};
+
+Set<String> blacklistApply(Set<String> fields) {
+  Set<String> lowercaseBlacklistedFields = new Set<String>();
+  for (String field : blacklistedFields)
+    lowercaseBlacklistedFields.add(field.toLowerCase());
+  Set<String> result = new Set<String>();
+  for (String field : fields)
+    if (!lowercaseBlacklistedFields.contains(field.toLowerCase()))
+      result.add(field);
+
+  return result;
+}
+
+Schema.DescribeSObjectResult contactDescription = Schema.getGlobalDescribe()
+  .get('Contact')
+  .getDescribe();
+Set<String> contactFields = blacklistApply(
+  contactDescription.fields.getMap().keySet()
+);
+
+List<Schema.ChildRelationship> contactChildRelationships = contactDescription
+  .getChildRelationships();
+
+SObject contactObject = Database.query(
+  'SELECT ' +
+    String.join(new List<String>(contactFields), ',') +
+    ' FROM Contact WHERE Id = :contactId'
+);
+Map<String, Object> contactData = contactObject.getPopulatedFieldsAsMap();
+
 Map<String, Object> data = new Map<String, Object>();
-data.put('firstName', contact.FirstName);
-data.put('lastName', contact.LastName);
-if (contact.Email != null)
-  data.put('email', contact.Email);
-if (contact.OtherPhone != null)
-  data.put('phone', contact.OtherPhone);
-if (contact.MobilePhone != null)
-  data.put('phone', contact.MobilePhone);
-if (contact.HomePhone != null)
-  data.put('phone', contact.HomePhone);
-if (contact.Phone != null)
-  data.put('phone', contact.Phone);
-if (contact.Birthdate != null)
-  data.put('birthDate', contact.Birthdate.format());
-if (contact.Description != null)
-  data.put('description', contact.Description);
+for (String key : contactData.keySet())
+  data.put(fieldnameNormalize(key), contactData.get(key));
 
-if (true) {
-  String seven20Fields = '';
-  for (String fieldName : contactFields)
-    if (fieldName.startsWith('seven20__'))
-      seven20Fields += fieldName + ',';
+String phone = (String) contactData.get('MobilePhone');
+if (phone == null)
+  phone = (String) contactData.get('OtherPhone');
+if (phone == null)
+  phone = (String) contactData.get('HomePhone');
+if (phone == null)
+  phone = (String) contactData.get('Phone');
+data.put('Phone', phone);
 
-  SObject seven20Object = Database.query(
+for (Schema.ChildRelationship cr : contactChildRelationships) {
+  String relName = cr.getRelationshipName();
+  if (!relevantChildRelationships.contains(relName))
+    continue;
+
+  Schema.DescribeSObjectResult childDescription = cr.getChildSObject()
+    .getDescribe();
+  Set<String> childFields = blacklistApply(
+    childDescription.fields.getMap().keySet()
+  );
+
+  List<SObject> childRecords = Database.query(
     'SELECT ' +
-      seven20Fields +
-      '(' +
-      'SELECT ' +
-      'seven20__Comments__c,' +
-      'seven20__Degree_Name__c,' +
-      'seven20__Degree_Subject__c,' +
-      'seven20__Degree_Type__c,' +
-      'seven20__End_Date__c,' +
-      'seven20__Graduation_Date__c,' +
-      'seven20__Measure_Value__c,' +
-      'seven20__School_Name__c,' +
-      'seven20__School_Type__c,' +
-      'seven20__Start_Date__c ' +
-      'FROM seven20__Education_History__r' +
-      '),' +
-      '(' +
-      'SELECT ' +
-      'seven20__Description__c,' +
-      'seven20__End_Date__c,' +
-      'seven20__Job_Title__c,' +
-      'seven20__Start_Date__c ' +
-      'FROM seven20__Employment_History__r' +
-      ')' +
-      'FROM Contact ' +
-      'WHERE Id = \'003QH00000KOe5eYAD\''
+      String.join(new List<String>(childFields), ',') +
+      ' FROM ' +
+      childDescription.getName() +
+      ' WHERE ' +
+      cr.getField().getDescribe().getName() +
+      ' = :contactId'
   );
-  Map<String, Object> seven20Data = (Map<String, Object>) JSON.deserializeUntyped(
-    JSON.serialize(seven20Object.getPopulatedFieldsAsMap())
-  );
+  List<Map<String, Object>> result = new List<Map<String, Object>>();
+  for (SObject rec : childRecords) {
+    Map<String, Object> recData = new Map<String, Object>();
+    Map<String, Object> recPopulatedFields = rec.getPopulatedFieldsAsMap();
+    for (String key : recPopulatedFields.keySet())
+      recData.put(fieldnameNormalize(key), recPopulatedFields.get(key));
 
-  if (seven20Data.get('seven20__Profile_Image_URL__c') != null)
-    data.put('avatar', seven20Data.get('seven20__Profile_Image_URL__c'));
-  if (seven20Data.get('seven20__Available_From__c') != null)
-    data.put('availableFrom', seven20Data.get('seven20__Available_From__c'));
-  if (seven20Data.get('seven20__Current_Day_Rate__c') != null)
-    data.put('currentDayRate', seven20Data.get('seven20__Current_Day_Rate__c'));
-  if (seven20Data.get('seven20__Current_Employment_Type__c') != null)
-    data.put(
-      'currentEmploymentType',
-      seven20Data.get('seven20__Current_Employment_Type__c')
-    );
-  if (seven20Data.get('seven20__Current_Salary__c') != null)
-    data.put('currentSalary', seven20Data.get('seven20__Current_Salary__c'));
-  if (seven20Data.get('seven20__Desired_Day_Rate__c') != null)
-    data.put('desiredDayRate', seven20Data.get('seven20__Desired_Day_Rate__c'));
-  if (seven20Data.get('seven20__Desired_Employment_Type__c') != null)
-    data.put(
-      'desiredEmploymentType',
-      seven20Data.get('seven20__Desired_Employment_Type__c')
-    );
-  if (seven20Data.get('seven20__Desired_Salary__c') != null)
-    data.put('desiredSalary', seven20Data.get('seven20__Desired_Salary__c'));
-  if (seven20Data.get('seven20__Driving_Licence__c') != null)
-    data.put('drivingLicence', seven20Data.get('seven20__Driving_Licence__c'));
-  if (seven20Data.get('seven20__Highest_Education_Level__c') != null)
-    data.put(
-      'highestEducationLevel',
-      seven20Data.get('seven20__Highest_Education_Level__c')
-    );
-  if (seven20Data.get('seven20__Job_Description__c') != null)
-    data.put('jobDescription', seven20Data.get('seven20__Job_Description__c'));
-  if (seven20Data.get('seven20__Languages__c') != null)
-    data.put('languages', seven20Data.get('seven20__Languages__c'));
-  if (seven20Data.get('seven20__LinkedIn__c') != null)
-    data.put('linkedin', seven20Data.get('seven20__LinkedIn__c'));
-  if (seven20Data.get('seven20__No_of_Years_Experience__c') != null)
-    data.put(
-      'noOfYearsExperience',
-      seven20Data.get('seven20__No_of_Years_Experience__c')
-    );
-  if (seven20Data.get('seven20__Notice_Period__c') != null)
-    data.put('noticePeriod', seven20Data.get('seven20__Notice_Period__c'));
-  if (seven20Data.get('seven20__Open_to_Relocation__c') != null)
-    data.put(
-      'openToRelocation',
-      seven20Data.get('seven20__Open_to_Relocation__c')
-    );
-  if (seven20Data.get('seven20__University__c') != null)
-    data.put('university', seven20Data.get('seven20__University__c'));
-  if (seven20Data.get('seven20__Work_Experience_Total_Months__c') != null)
-    data.put(
-      'workExperienceTotalMonths',
-      seven20Data.get('seven20__Work_Experience_Total_Months__c')
-    );
-  // Iterate over seven20 related values
-  for (String key : seven20Data.keySet()) {
-    if (!key.startsWith('seven20__'))
-      continue;
-    // Remove seven20__ prefix
-    // Remove __c suffix
-    String fieldName = key.substring(9, key.length() - 3).uncapitalize();
-    if (!data.containsKey(fieldName))
-      data.put(fieldName, seven20Data.get(key));
+    result.add(recData);
   }
 
-  if (false && seven20Data.get('seven20__Education_History__r') != null) {
-    List<Map<String, Object>> educationHistory = new List<Map<String, Object>>();
-    for (
-      Object eduObject : (List<Object>) seven20Data.get(
-        'seven20__Education_History__r'
-      )
-    ) {
-      Map<String, Object> edu = (Map<String, Object>) eduObject;
-      Map<String, Object> eduMap = new Map<String, Object>();
-      if (edu.get('seven20__Comments__c') != null)
-        eduMap.put('comments', edu.get('seven20__Comments__c'));
-      if (edu.get('seven20__Degree_Name__c') != null)
-        eduMap.put('degreeName', edu.get('seven20__Degree_Name__c'));
-      if (edu.get('seven20__Degree_Subject__c') != null)
-        eduMap.put('degreeSubject', edu.get('seven20__Degree_Subject__c'));
-      if (edu.get('seven20__Degree_Type__c') != null)
-        eduMap.put('degreeType', edu.get('seven20__Degree_Type__c'));
-      if (edu.get('seven20__End_Date__c') != null)
-        eduMap.put('endDate', edu.get('seven20__End_Date__c'));
-      if (edu.get('seven20__Graduation_Date__c') != null)
-        eduMap.put('graduationDate', edu.get('seven20__Graduation_Date__c'));
-      if (edu.get('seven20__Measure_Value__c') != null)
-        eduMap.put('measureValue', edu.get('seven20__Measure_Value__c'));
-      if (edu.get('seven20__School_Name__c') != null)
-        eduMap.put('schoolName', edu.get('seven20__School_Name__c'));
-      if (edu.get('seven20__School_Type__c') != null)
-        eduMap.put('schoolType', edu.get('seven20__School_Type__c'));
-      if (edu.get('seven20__Start_Date__c') != null)
-        eduMap.put('startDate', edu.get('seven20__Start_Date__c'));
-      educationHistory.add(eduMap);
-    }
-    data.put('educationHistory', educationHistory);
-  }
-  if (false && seven20Data.get('seven20__Employment_History__r') != null) {
-    List<Map<String, Object>> employmentHistory = new List<Map<String, Object>>();
-    for (
-      Object empObject : (List<Object>) seven20Data.get(
-        'seven20__Employment_History__r'
-      )
-    ) {
-      Map<String, Object> emp = (Map<String, Object>) empObject;
-      Map<String, Object> empMap = new Map<String, Object>();
-      if (emp.get('seven20__Description__c') != null)
-        empMap.put('description', emp.get('seven20__Description__c'));
-      if (emp.get('seven20__End_Date__c') != null)
-        empMap.put('endDate', emp.get('seven20__End_Date__c'));
-      if (emp.get('seven20__Job_Title__c') != null)
-        empMap.put('jobTitle', emp.get('seven20__Job_Title__c'));
-      if (emp.get('seven20__Start_Date__c') != null)
-        empMap.put('startDate', emp.get('seven20__Start_Date__c'));
-      employmentHistory.add(empMap);
-    }
-    data.put('employmentHistory', employmentHistory);
-  }
+  data.put(fieldnameNormalize(relName), result);
 }
 
 System.debug(JSON.serializePretty(data));

@@ -1,5 +1,4 @@
 import { LightningElement, api, track, wire } from "lwc";
-import candidateAttachCV from "@salesforce/apex/CVTransformerApi.candidateAttachCV";
 import candidateAttachmentsList from "@salesforce/apex/CVTransformerApi.candidateAttachmentsList";
 import candidateContextGet from "@salesforce/apex/CVTransformerApi.candidateContextGet";
 import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
@@ -20,7 +19,7 @@ export default class CVTransformer extends LightningElement {
   candidate_id;
   candidate_secret_editable;
 
-  external_attachments = [];
+  external_attachments = null;
   external_candidate_data = null;
   iframe_ready = false;
 
@@ -42,27 +41,30 @@ export default class CVTransformer extends LightningElement {
     const iframe = this.template.querySelector("iframe");
     if (!iframe || !iframe.contentWindow) return;
 
-    iframe.contentWindow.postMessage(
-      {
-        avatar: this.external_candidate_data?.avatar || null,
-        id: this.recordId,
-        name:
-          (this.external_candidate_data?.firstName ?? "") +
-          " " +
-          (this.external_candidate_data?.lastName ?? ""),
-        type: "external-candidate-data",
-        url: window.location.href,
-        values: this.external_candidate_data
-      },
-      this.iframeUrl
-    );
-    iframe.contentWindow.postMessage(
-      {
-        attachments: this.external_attachments ?? [],
-        type: "external-attachments"
-      },
-      this.iframeUrl
-    );
+    if (this.external_candidate_data)
+      iframe.contentWindow.postMessage(
+        {
+          avatar: null,
+          id: this.recordId,
+          name:
+            (this.external_candidate_data.FirstName ?? "") +
+            " " +
+            (this.external_candidate_data.LastName ?? ""),
+          type: "external-candidate-data",
+          url: window.location.href,
+          values: this.external_candidate_data
+        },
+        this.iframeUrl
+      );
+
+    if (this.external_attachments)
+      iframe.contentWindow.postMessage(
+        {
+          attachments: this.external_attachments,
+          type: "external-attachments"
+        },
+        this.iframeUrl
+      );
   }
 
   @wire(candidateContextGet, { contact_id: "$recordId" })
@@ -80,7 +82,7 @@ export default class CVTransformer extends LightningElement {
   wiredAttachments({ data }) {
     if (!data) return;
     try {
-      this.external_attachments = JSON.parse(data);
+      this.external_attachments = JSON.parse(data) ?? [];
       this.postIframeWhenReady();
     } catch (error) {
       console.log(error);
@@ -97,10 +99,6 @@ export default class CVTransformer extends LightningElement {
 
   get isSetup() {
     return this.state === "setup";
-  }
-
-  get isError() {
-    return this.state === "error";
   }
 
   get iframeUrl() {
@@ -190,26 +188,6 @@ export default class CVTransformer extends LightningElement {
       await candidateUnlink({ contact_id: this.recordId });
       this.data = { ...this.data, candidate_id: null, candidate_secret: null };
       this.error = null;
-    } catch (error) {
-      this.setError(error);
-    }
-    this.state = "edit";
-  }
-
-  async onAttachmentSelect(event) {
-    this.state = "loading";
-    try {
-      if (event.detail === "regular" || event.detail === "anonymous") {
-        await candidateExportCV({
-          contact_id: this.recordId,
-          export_type: event.detail
-        });
-        window.location.reload();
-      } else
-        await candidateAttachCV({
-          contact_id: this.recordId,
-          content_version_id: event.detail
-        });
     } catch (error) {
       this.setError(error);
     }

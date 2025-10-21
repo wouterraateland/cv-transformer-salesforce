@@ -20,6 +20,202 @@ public with sharing class CVTransformerApi {
     public Map<String, CVTransformerCandidateAttachment> attachments;
   }
 
+  public static Date stringToDate(String dateString) {
+    if (String.isBlank(dateString))
+      return null;
+    try {
+      return Date.valueOf(dateString);
+    } catch (Exception e) {
+      System.debug('Invalid date format: ' + dateString);
+      return null;
+    }
+  }
+
+  private static Set<String> listObjectFields(String objectName) {
+    return new Set<String>(
+      Schema.getGlobalDescribe()
+        .get(objectName)
+        .getDescribe()
+        .fields.getMap()
+        .keySet()
+    );
+  }
+
+  public static Set<String> contactFields = listObjectFields('Contact');
+  public static Set<String> contentVersionFields = listObjectFields(
+    'ContentVersion'
+  );
+
+  private static Set<String> blacklistedFields = new Set<String>{
+    'Accepts_Floats__c',
+    'AccountId',
+    'Ambition_Record_Type_Banner__c',
+    'AmbTech_Candidate__c',
+    'Candidate_Cleared__c',
+    'CreatedById',
+    'CreatedDate',
+    'CVTransformer__cvt_id__c',
+    'CVTransformer__cvt_secret__c',
+    'Dashboard_Access__c',
+    'Disable_Hot_Boss__c',
+    'DoNotCall',
+    'et4ae5__HasOptedOutOfMobile__c',
+    'Group_Office__c',
+    'HasOptedOutOfEmail',
+    'HomePhone',
+    'Hot_Boss__c',
+    'IsDeleted',
+    'IsEmailBounced',
+    'IsPriorityRecord',
+    'LastModifiedById',
+    'LastModifiedDate',
+    'LastReferencedDate',
+    'LastViewedDate',
+    'MailingAddress',
+    'MobilePhone',
+    'Opted_In_SMS_Message__c',
+    'Opted_Out_Marketing_Emails__c',
+    'OtherAddress',
+    'OtherPhone',
+    'Phone',
+    'PhotoUrl',
+    'Record_Type_Name',
+    'RecordTypeId',
+    'seven20__Account__c',
+    'seven20__Candidate__c',
+    'seven20__Candidate_Source_Detail__c',
+    'seven20__Candidate_Status__c',
+    'seven20__Created_via_Daxtra__c',
+    'seven20__CV_File_Id__c',
+    'seven20__CV_File_Name__c',
+    'seven20__Full_CV__c',
+    'seven20__Is_Indexed_on_Daxtra__c',
+    'seven20__Job__c',
+    'seven20__Job_ATS__c',
+    'seven20__Job_Board_Id__c',
+    'seven20__Job_Board_Id__c',
+    'seven20__Parser_Status__c',
+    'seven20__Record_Type_Name__c',
+    'seven20__Sync_Status__c',
+    'Status_Icon__c',
+    'SystemModstamp',
+    'Temp_Traitor__c',
+    'Temp_Traitor_Client__c',
+    'To_Archive__c',
+    'Traitor__c',
+    'tubl__TextUs_Indexed_Phone_3__c',
+    'tubl__TextUs_Indexed_Phone_5__c',
+    'tubl__TextUs_Phone__c'
+  };
+
+  public static Set<String> relevantChildRelationships = new Set<String>{
+    'seven20__Accounts__r',
+    'seven20__Applications__r',
+    'seven20__Candidate_Shifts__r',
+    'seven20__Compliances__r',
+    'seven20__Contacts__r',
+    'seven20__Education_History__r',
+    'seven20__Employment_History__r',
+    'seven20__Interviews__r',
+    'seven20__Job_Board_Applications__r',
+    'seven20__Job_Leads__r',
+    'seven20__Jobs__r',
+    'seven20__Placements__r',
+    'seven20__References__r',
+    'seven20__Relationships__r'
+  };
+
+  public static String atsInfer() {
+    return contactFields.contains('seven20__cv_file_id__c')
+      ? 'Seven20'
+      : contactFields.contains('msf__Place_of_birth__c')
+          ? 'MySolution'
+          : 'Salesforce';
+  }
+
+  public class ContactPageData {
+    @AuraEnabled
+    public String ats;
+    @AuraEnabled
+    public String candidate_id;
+    @AuraEnabled
+    public String candidate_secret;
+    @AuraEnabled
+    public String organization_id;
+
+    public ContactPageData() {
+      this.ats = CVTransformerApi.atsInfer();
+    }
+
+    public ContactPageData(
+      CVTransformerConfiguration__c config,
+      Contact contact
+    ) {
+      this.ats = CVTransformerApi.atsInfer();
+      this.candidate_id = contact.cvt_id__c;
+      this.candidate_secret = contact.cvt_secret__c;
+      this.organization_id = config.Name;
+    }
+  }
+
+  public class CandidateSalesforceData {
+    public String birthdate = '';
+    public String email = '';
+    public String first_name = '';
+    public String last_name = '';
+    public String phone = '';
+    public String title = '';
+
+    public CandidateSalesforceData() {
+    }
+  }
+
+  public static String fieldnameNormalize(String fieldname) {
+    if (fieldname.startsWith('seven20__'))
+      fieldname = fieldname.substring(9);
+    if (fieldname.endsWith('__c'))
+      fieldname = fieldname.substring(0, fieldname.length() - 3);
+    if (fieldname.endsWith('__r'))
+      fieldname = fieldname.substring(0, fieldname.length() - 3);
+    return fieldname;
+  }
+
+  public static Set<String> blacklistApply(Set<String> fields) {
+    Set<String> lowercaseBlacklistedFields = new Set<String>();
+    for (String field : blacklistedFields)
+      lowercaseBlacklistedFields.add(field.toLowerCase());
+    Set<String> result = new Set<String>();
+    for (String field : fields)
+      if (!lowercaseBlacklistedFields.contains(field.toLowerCase()))
+        result.add(field);
+
+    return result;
+  }
+
+  public static String mimeTypeInfer(String fileType) {
+    Map<String, String> mimeMap = new Map<String, String>{
+      'DOC' => 'application/msword',
+      'WORD' => 'application/msword',
+      'DOCX' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'WORD_X' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'JPG' => 'image/jpeg',
+      'JPEG' => 'image/jpeg',
+      'PDF' => 'application/pdf',
+      'PNG' => 'image/png',
+      'WEBP' => 'image/webp',
+      'TXT' => 'text/plain',
+      'TEXT' => 'text/plain'
+    };
+    return mimeMap.containsKey(fileType)
+      ? mimeMap.get(fileType)
+      : 'application/octet-stream';
+  }
+
+  private static String nsPrefix(String baseName) {
+    return 'CVTransformer__' + baseName; // Production
+    // return baseName; // Development
+  }
+
   private static CVTransformerCandidate candidateGet(
     String api_key,
     String id
@@ -70,18 +266,6 @@ public with sharing class CVTransformerApi {
     );
   }
 
-  public class CandidateSalesforceData {
-    public String birthdate = '';
-    public String email = '';
-    public String first_name = '';
-    public String last_name = '';
-    public String phone = '';
-    public String title = '';
-
-    public CandidateSalesforceData() {
-    }
-  }
-
   private static CandidateSalesforceData candidateExtract(
     String api_key,
     String candidate_id
@@ -127,110 +311,6 @@ public with sharing class CVTransformerApi {
     }
   }
 
-  public static Date stringToDate(String dateString) {
-    if (String.isBlank(dateString))
-      return null;
-    try {
-      return Date.valueOf(dateString);
-    } catch (Exception e) {
-      System.debug('Invalid date format: ' + dateString);
-      return null;
-    }
-  }
-
-  public class UtilPageData {
-    @AuraEnabled
-    public String organization_id;
-    @AuraEnabled
-    public String color_scheme;
-    @AuraEnabled
-    public String language;
-
-    public UtilPageData() {
-    }
-
-    public UtilPageData(CVTransformerConfiguration__c config) {
-      this.organization_id = config.Name;
-      this.color_scheme = config.color_scheme__c;
-      this.language = config.language__c;
-    }
-  }
-
-  public class ContactPageData {
-    @AuraEnabled
-    public String organization_id;
-    @AuraEnabled
-    public String color_scheme;
-    @AuraEnabled
-    public String language;
-    @AuraEnabled
-    public String candidate_id;
-    @AuraEnabled
-    public String candidate_secret;
-    @AuraEnabled
-    public String ats;
-
-    public ContactPageData() {
-      this.ats = CVTransformerApi.ats;
-    }
-
-    public ContactPageData(
-      CVTransformerConfiguration__c config,
-      Contact contact
-    ) {
-      this.organization_id = config.Name;
-      this.color_scheme = config.color_scheme__c;
-      this.language = config.language__c;
-      this.candidate_id = contact.cvt_id__c;
-      this.candidate_secret = contact.cvt_secret__c;
-      this.ats = CVTransformerApi.ats;
-    }
-  }
-
-  private static Set<String> listObjectFields(String objectName) {
-    return new Set<String>(
-      Schema.getGlobalDescribe()
-        .get(objectName)
-        .getDescribe()
-        .fields.getMap()
-        .keySet()
-    );
-  }
-
-  public static Set<String> contactFields = listObjectFields('Contact');
-  public static Set<String> contentVersionFields = listObjectFields(
-    'ContentVersion'
-  );
-  public static String ats = contactFields.contains('seven20__cv_file_id__c')
-    ? 'Seven20'
-    : contactFields.contains('msf__Place_of_birth__c')
-        ? 'MySolution'
-        : 'Salesforce';
-
-  public static String getMimeType(String fileType) {
-    Map<String, String> mimeMap = new Map<String, String>{
-      'DOC' => 'application/msword',
-      'WORD' => 'application/msword',
-      'DOCX' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'WORD_X' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'JPG' => 'image/jpeg',
-      'JPEG' => 'image/jpeg',
-      'PDF' => 'application/pdf',
-      'PNG' => 'image/png',
-      'WEBP' => 'image/webp',
-      'TXT' => 'text/plain',
-      'TEXT' => 'text/plain'
-    };
-    return mimeMap.containsKey(fileType)
-      ? mimeMap.get(fileType)
-      : 'application/octet-stream';
-  }
-
-  private static String nsPrefix(String baseName) {
-    return 'CVTransformer__' + baseName; // Production
-    // return baseName; // Development
-  }
-
   private static HttpResponse attach(
     String api_key,
     String candidate_id,
@@ -248,7 +328,7 @@ public with sharing class CVTransformerApi {
     );
     request.setMethod('POST');
     request.setHeader('Authorization', 'Bearer ' + api_key);
-    request.setHeader('Content-Type', getMimeType(contentVersion.FileType));
+    request.setHeader('Content-Type', mimeTypeInfer(contentVersion.FileType));
     request.setHeader(
       'Content-Disposition',
       'attachment; filename="' + contentVersion.Title + '"'
@@ -258,288 +338,96 @@ public with sharing class CVTransformerApi {
     return http.send(request);
   }
 
-  public static HttpResponse attachSeven20AWS(
-    String api_key,
-    String candidate_id,
-    String location,
-    String aws_file_id
-  ) {
-    HttpRequest request = new HttpRequest();
-    request.setEndpoint(
-      'callout:' +
-        nsPrefix('API') +
-        '/candidates/' +
-        candidate_id +
-        '/attach-from-seven20-aws?location=' +
-        location +
-        '&aws_file_id=' +
-        aws_file_id
-    );
-    request.setMethod('POST');
-    request.setHeader('Authorization', 'Bearer ' + api_key);
-    Http http = new Http();
-    return http.send(request);
-  }
-
   @AuraEnabled(cacheable=true)
-  public static UtilPageData utilDataGet() {
+  public static String organizationIdGet() {
     List<CVTransformerConfiguration__c> configs = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
     if (configs.isEmpty())
-      return new UtilPageData();
-    CVTransformerConfiguration__c config = configs[0];
-
-    return new UtilPageData(config);
+      return null;
+    return configs[0].Name;
   }
 
   @AuraEnabled(cacheable=true)
   public static ContactPageData contactDataGet(Id contact_id) {
     List<CVTransformerConfiguration__c> configs = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
     if (configs.isEmpty())
       return new ContactPageData();
     CVTransformerConfiguration__c config = configs[0];
+
     Contact contact = [
       SELECT cvt_id__c, cvt_secret__c
       FROM Contact
       WHERE Id = :contact_id
       LIMIT 1
     ];
-
     return new ContactPageData(config, contact);
-  }
-
-  public static void candidateContextAppendBase(
-    Map<String, Object> data,
-    Contact contact
-  ) {
-    data.put('firstName', contact.FirstName);
-    data.put('lastName', contact.LastName);
-    if (contact.Email != null)
-      data.put('email', contact.Email);
-    if (contact.OtherPhone != null)
-      data.put('phone', contact.OtherPhone);
-    if (contact.MobilePhone != null)
-      data.put('phone', contact.MobilePhone);
-    if (contact.HomePhone != null)
-      data.put('phone', contact.HomePhone);
-    if (contact.Phone != null)
-      data.put('phone', contact.Phone);
-    if (contact.Birthdate != null)
-      data.put('birthDate', contact.Birthdate.format());
-    if (contact.Description != null)
-      data.put('description', contact.Description);
-  }
-
-  public static void candidateContextAppendSeven20(
-    Map<String, Object> data,
-    Map<String, Object> seven20Data
-  ) {
-    if (seven20Data.get('seven20__Available_From__c') != null)
-      data.put('availableFrom', seven20Data.get('seven20__Available_From__c'));
-    if (seven20Data.get('seven20__Current_Day_Rate__c') != null)
-      data.put(
-        'currentDayRate',
-        seven20Data.get('seven20__Current_Day_Rate__c')
-      );
-    if (seven20Data.get('seven20__Current_Employment_Type__c') != null)
-      data.put(
-        'currentEmploymentType',
-        seven20Data.get('seven20__Current_Employment_Type__c')
-      );
-    if (seven20Data.get('seven20__Current_Salary__c') != null)
-      data.put('currentSalary', seven20Data.get('seven20__Current_Salary__c'));
-    if (seven20Data.get('seven20__Daxtra_Id__c') != null)
-      data.put('daxtraId', seven20Data.get('seven20__Daxtra_Id__c'));
-    if (seven20Data.get('seven20__Desired_Day_Rate__c') != null)
-      data.put(
-        'desiredDayRate',
-        seven20Data.get('seven20__Desired_Day_Rate__c')
-      );
-    if (seven20Data.get('seven20__Desired_Employment_Type__c') != null)
-      data.put(
-        'desiredEmploymentType',
-        seven20Data.get('seven20__Desired_Employment_Type__c')
-      );
-    if (seven20Data.get('seven20__Desired_Salary__c') != null)
-      data.put('desiredSalary', seven20Data.get('seven20__Desired_Salary__c'));
-    if (seven20Data.get('seven20__Driving_Licence__c') != null)
-      data.put(
-        'drivingLicence',
-        seven20Data.get('seven20__Driving_Licence__c')
-      );
-    if (seven20Data.get('seven20__Highest_Education_Level__c') != null)
-      data.put(
-        'highestEducationLevel',
-        seven20Data.get('seven20__Highest_Education_Level__c')
-      );
-    if (seven20Data.get('seven20__Job_Description__c') != null)
-      data.put(
-        'jobDescription',
-        seven20Data.get('seven20__Job_Description__c')
-      );
-    if (seven20Data.get('seven20__Languages__c') != null)
-      data.put('languages', seven20Data.get('seven20__Languages__c'));
-    if (seven20Data.get('seven20__LinkedIn__c') != null)
-      data.put('linkedin', seven20Data.get('seven20__LinkedIn__c'));
-    if (seven20Data.get('seven20__No_of_Years_Experience__c') != null)
-      data.put(
-        'noOfYearsExperience',
-        seven20Data.get('seven20__No_of_Years_Experience__c')
-      );
-    if (seven20Data.get('seven20__Notice_Period__c') != null)
-      data.put('noticePeriod', seven20Data.get('seven20__Notice_Period__c'));
-    if (seven20Data.get('seven20__Open_to_Relocation__c') != null)
-      data.put(
-        'openToRelocation',
-        seven20Data.get('seven20__Open_to_Relocation__c')
-      );
-    if (seven20Data.get('seven20__Profile_Image_URL__c') != null)
-      data.put('avatar', seven20Data.get('seven20__Profile_Image_URL__c'));
-    if (seven20Data.get('seven20__University__c') != null)
-      data.put('university', seven20Data.get('seven20__University__c'));
-    if (seven20Data.get('seven20__Work_Experience_Total_Months__c') != null)
-      data.put(
-        'workExperienceTotalMonths',
-        seven20Data.get('seven20__Work_Experience_Total_Months__c')
-      );
-    if (seven20Data.get('seven20__Education_History__r') != null) {
-      List<Map<String, Object>> educationHistory = new List<Map<String, Object>>();
-      for (
-        Object eduObject : (List<Object>) seven20Data.get(
-          'seven20__Education_History__r'
-        )
-      ) {
-        Map<String, Object> edu = (Map<String, Object>) eduObject;
-        Map<String, Object> eduMap = new Map<String, Object>();
-        if (edu.get('seven20__Comments__c') != null)
-          eduMap.put('comments', edu.get('seven20__Comments__c'));
-        if (edu.get('seven20__Degree_Name__c') != null)
-          eduMap.put('degreeName', edu.get('seven20__Degree_Name__c'));
-        if (edu.get('seven20__Degree_Subject__c') != null)
-          eduMap.put('degreeSubject', edu.get('seven20__Degree_Subject__c'));
-        if (edu.get('seven20__Degree_Type__c') != null)
-          eduMap.put('degreeType', edu.get('seven20__Degree_Type__c'));
-        if (edu.get('seven20__End_Date__c') != null)
-          eduMap.put('endDate', edu.get('seven20__End_Date__c'));
-        if (edu.get('seven20__Graduation_Date__c') != null)
-          eduMap.put('graduationDate', edu.get('seven20__Graduation_Date__c'));
-        if (edu.get('seven20__Measure_Value__c') != null)
-          eduMap.put('measureValue', edu.get('seven20__Measure_Value__c'));
-        if (edu.get('seven20__School_Name__c') != null)
-          eduMap.put('schoolName', edu.get('seven20__School_Name__c'));
-        if (edu.get('seven20__School_Type__c') != null)
-          eduMap.put('schoolType', edu.get('seven20__School_Type__c'));
-        if (edu.get('seven20__Start_Date__c') != null)
-          eduMap.put('startDate', edu.get('seven20__Start_Date__c'));
-        educationHistory.add(eduMap);
-      }
-      data.put('educationHistory', educationHistory);
-    }
-    if (seven20Data.get('seven20__Employment_History__r') != null) {
-      List<Map<String, Object>> employmentHistory = new List<Map<String, Object>>();
-      for (
-        Object empObject : (List<Object>) seven20Data.get(
-          'seven20__Employment_History__r'
-        )
-      ) {
-        Map<String, Object> emp = (Map<String, Object>) empObject;
-        Map<String, Object> empMap = new Map<String, Object>();
-        if (emp.get('seven20__Description__c') != null)
-          empMap.put('description', emp.get('seven20__Description__c'));
-        if (emp.get('seven20__End_Date__c') != null)
-          empMap.put('endDate', emp.get('seven20__End_Date__c'));
-        if (emp.get('seven20__Job_Title__c') != null)
-          empMap.put('jobTitle', emp.get('seven20__Job_Title__c'));
-        if (emp.get('seven20__Start_Date__c') != null)
-          empMap.put('startDate', emp.get('seven20__Start_Date__c'));
-        employmentHistory.add(empMap);
-      }
-      data.put('employmentHistory', employmentHistory);
-    }
   }
 
   @AuraEnabled(cacheable=true)
   public static String candidateContextGet(Id contact_id) {
-    Contact contact = [
-      SELECT
-        Birthdate,
-        Description,
-        Email,
-        FirstName,
-        HomePhone,
-        LastName,
-        MobilePhone,
-        OtherPhone,
-        Phone
-      FROM Contact
-      WHERE Id = :contact_id
-    ];
+    SObject contactObject = Database.query(
+      'SELECT ' +
+        String.join(new List<String>(blacklistApply(contactFields)), ',') +
+        ' FROM Contact WHERE Id = :contact_id'
+    );
+    Map<String, Object> contactData = contactObject.getPopulatedFieldsAsMap();
 
     Map<String, Object> data = new Map<String, Object>();
-    candidateContextAppendBase(data, contact);
+    for (String key : contactData.keySet())
+      data.put(fieldnameNormalize(key), contactData.get(key));
 
-    // Seven20 custom fields
-    if (contactFields.contains('seven20__cv_file_id__c')) {
-      SObject seven20Object = Database.query(
+    String phone = (String) contactData.get('MobilePhone');
+    if (phone == null)
+      phone = (String) contactData.get('OtherPhone');
+    if (phone == null)
+      phone = (String) contactData.get('HomePhone');
+    if (phone == null)
+      phone = (String) contactData.get('Phone');
+    data.put('Phone', phone);
+
+    List<Schema.ChildRelationship> contactChildRelationships = Schema.getGlobalDescribe()
+      .get('Contact')
+      .getDescribe()
+      .getChildRelationships();
+
+    for (Schema.ChildRelationship cr : contactChildRelationships) {
+      String relName = cr.getRelationshipName();
+      if (!relevantChildRelationships.contains(relName))
+        continue;
+
+      Schema.DescribeSObjectResult childDescription = cr.getChildSObject()
+        .getDescribe();
+      Set<String> childFields = blacklistApply(
+        childDescription.fields.getMap().keySet()
+      );
+
+      List<SObject> childRecords = Database.query(
         'SELECT ' +
-          'seven20__Available_From__c,' +
-          'seven20__Current_Day_Rate__c,' +
-          'seven20__Current_Employment_Type__c,' +
-          'seven20__Current_Salary__c,' +
-          'seven20__Daxtra_Id__c,' +
-          'seven20__Desired_Day_Rate__c,' +
-          'seven20__Desired_Employment_Type__c,' +
-          'seven20__Desired_Salary__c,' +
-          'seven20__Driving_Licence__c,' +
-          'seven20__Highest_Education_Level__c,' +
-          'seven20__Job_Description__c,' +
-          'seven20__Languages__c,' +
-          'seven20__LinkedIn__c,' +
-          'seven20__No_of_Years_Experience__c,' +
-          'seven20__Notice_Period__c,' +
-          'seven20__Open_to_Relocation__c,' +
-          'seven20__Profile_Image_URL__c,' +
-          'seven20__University__c,' +
-          'seven20__Work_Experience_Total_Months__c,' +
-          '(' +
-          'SELECT ' +
-          'seven20__Comments__c,' +
-          'seven20__Degree_Name__c,' +
-          'seven20__Degree_Subject__c,' +
-          'seven20__Degree_Type__c,' +
-          'seven20__End_Date__c,' +
-          'seven20__Graduation_Date__c,' +
-          'seven20__Measure_Value__c,' +
-          'seven20__School_Name__c,' +
-          'seven20__School_Type__c,' +
-          'seven20__Start_Date__c ' +
-          'FROM seven20__Education_History__r' +
-          '),' +
-          '(' +
-          'SELECT ' +
-          'seven20__Description__c,' +
-          'seven20__End_Date__c,' +
-          'seven20__Job_Title__c,' +
-          'seven20__Start_Date__c ' +
-          'FROM seven20__Employment_History__r' +
-          ')' +
-          'FROM Contact ' +
-          'WHERE Id = \'' +
-          contact_id +
-          '\''
+          String.join(new List<String>(childFields), ',') +
+          ' FROM ' +
+          childDescription.getName() +
+          ' WHERE ' +
+          cr.getField().getDescribe().getName() +
+          ' = :contact_id'
       );
-      Map<String, Object> seven20Data = (Map<String, Object>) JSON.deserializeUntyped(
-        JSON.serialize(seven20Object.getPopulatedFieldsAsMap())
-      );
+      List<Map<String, Object>> result = new List<Map<String, Object>>();
+      for (SObject rec : childRecords) {
+        Map<String, Object> recData = new Map<String, Object>();
+        Map<String, Object> recPopulatedFields = rec.getPopulatedFieldsAsMap();
+        for (String key : recPopulatedFields.keySet())
+          recData.put(fieldnameNormalize(key), recPopulatedFields.get(key));
 
-      candidateContextAppendSeven20(data, seven20Data);
+        result.add(recData);
+      }
+
+      data.put(fieldnameNormalize(relName), result);
     }
 
     return JSON.serialize(data);
@@ -558,9 +446,7 @@ public with sharing class CVTransformerApi {
             'ContentDocument.LatestPublishedVersion.Title ' +
             'FROM ContentDocumentLink ' +
             'WHERE ContentDocument.LatestPublishedVersion.seven20__file_type__c IN (\'CV\', \'CV (Parser)\', \'CV (PDF Converted)\') ' +
-            'AND LinkedEntityId = \'' +
-            contact_id +
-            '\''
+            'AND LinkedEntityId = :contact_id'
         )
       : [
           SELECT
@@ -588,9 +474,7 @@ public with sharing class CVTransformerApi {
           'AND Id IN (' +
           'SELECT seven20__Document__c ' +
           'FROM seven20__Document_Relationship__c ' +
-          'WHERE seven20__Contact__c = \'' +
-          contact_id +
-          '\')'
+          'WHERE seven20__Contact__c = :contact_id)'
       );
 
       for (SObject rel : rels) {
@@ -620,24 +504,6 @@ public with sharing class CVTransformerApi {
     data.put('extension', cv.FileExtension);
     data.put('title', cv.Title);
     return data;
-  }
-
-  @AuraEnabled(cacheable=true)
-  public static List<ContentVersion> getRelatedContentVersions(Id recordId) {
-    List<ContentDocumentLink> contentDocumentLinks = [
-      SELECT ContentDocumentId
-      FROM ContentDocumentLink
-      WHERE LinkedEntityId = :recordId
-    ];
-    List<String> contentDocumentIds = new List<String>();
-    for (ContentDocumentLink cdl : contentDocumentLinks)
-      contentDocumentIds.add(cdl.ContentDocumentId);
-
-    return [
-      SELECT Id, Title
-      FROM ContentVersion
-      WHERE ContentDocumentId IN :contentDocumentIds AND IsLatest = TRUE
-    ];
   }
 
   @AuraEnabled
@@ -675,23 +541,12 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static void configUpdate(String language, String color_scheme) {
-    CVTransformerConfiguration__c config = [
-      SELECT Id, Name, api_key__c, color_scheme__c, language__c
-      FROM CVTransformerConfiguration__c
-    ];
-    config.color_scheme__c = color_scheme;
-    config.language__c = language;
-    update config;
-  }
-
-  @AuraEnabled
   public static String contactCreate(
     Id content_document_id,
     Id content_version_id
   ) {
     CVTransformerConfiguration__c config = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
@@ -760,7 +615,7 @@ public with sharing class CVTransformerApi {
   @AuraEnabled
   public static ContactPageData contactTransformCv(Id contact_id) {
     CVTransformerConfiguration__c config = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
@@ -789,7 +644,7 @@ public with sharing class CVTransformerApi {
     String candidate_id
   ) {
     CVTransformerConfiguration__c config = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
@@ -831,48 +686,9 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static ContactPageData candidateAttachCV(
-    Id contact_id,
-    Id content_version_id
-  ) {
-    CVTransformerConfiguration__c config = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
-      FROM CVTransformerConfiguration__c
-      LIMIT 1
-    ];
-    Contact contact = [
-      SELECT cvt_id__c, cvt_secret__c
-      FROM Contact
-      WHERE Id = :contact_id
-      LIMIT 1
-    ];
-    ContentVersion contentVersion = [
-      SELECT FileType, Title, VersionData
-      FROM ContentVersion
-      WHERE Id = :content_version_id
-      LIMIT 1
-    ];
-
-    HttpResponse response = attach(
-      config.api_key__c,
-      contact.cvt_id__c,
-      'cv',
-      contentVersion
-    );
-    Integer statusCode = response.getStatusCode();
-    if (statusCode < 200 || statusCode >= 300) {
-      throw new AuraHandledException(
-        'Could not sync attachment: ' + response.getBody()
-      );
-    }
-
-    return new ContactPageData(config, contact);
-  }
-
-  @AuraEnabled
   public static String candidateExportCV(Id contact_id, String export_type) {
     CVTransformerConfiguration__c config = [
-      SELECT Name, api_key__c, color_scheme__c, language__c
+      SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
       LIMIT 1
     ];
@@ -880,9 +696,7 @@ public with sharing class CVTransformerApi {
       ? Database.query(
           'SELECT' +
             '	cvt_id__c, cvt_secret__c, seven20__cv_file_id__c' +
-            ' FROM Contact WHERE Id = \'' +
-            contact_id +
-            '\''
+            ' FROM Contact WHERE Id = :contact_id'
         )
       : [
           SELECT cvt_id__c, cvt_secret__c
