@@ -4,8 +4,8 @@
   "sourceApiVersion": "62.0",
   "packageDirectories": [
     {
-      "versionName": "ver 0.30",
-      "versionNumber": "0.30.0.NEXT",
+      "versionName": "ver 0.32",
+      "versionNumber": "0.32.0.NEXT",
       "path": "force-app",
       "default": true,
       "package": "CV-Transformer",

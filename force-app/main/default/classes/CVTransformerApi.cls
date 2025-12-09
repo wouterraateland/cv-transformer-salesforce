@@ -556,6 +556,11 @@ public with sharing class CVTransformerApi {
       WHERE Id = :content_version_id
       LIMIT 1
     ];
+    List<RecordType> contactRecordTypes = [
+      SELECT Id, DeveloperName
+      FROM RecordType
+      WHERE SObjectType = 'Contact'
+    ];
 
     // Create new candidate in CVTransformer
     CVTransformerCandidate candidate = candidateCreate(config.api_key__c);
@@ -583,6 +588,9 @@ public with sharing class CVTransformerApi {
     try {
       if (contactFields.contains('seven20__cv_file_id__c'))
         contact.put('seven20__cv_file_id__c', content_document_id);
+      for (RecordType recordType : contactRecordTypes)
+        if (recordType.DeveloperName == 'Candidate')
+          contact.put('RecordTypeId', recordType.Id);
       insert contact;
     } catch (DmlException e) {
       throw new AuraHandledException('Could not create contact: Duplicate');

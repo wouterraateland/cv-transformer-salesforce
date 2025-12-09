@@ -1,4 +1,6 @@
+import { getRecord } from "lightning/uiRecordApi";
 import { LightningElement, api, track, wire } from "lwc";
+import { refreshApex } from "@salesforce/apex";
 import candidateAttachmentsList from "@salesforce/apex/CVTransformerApi.candidateAttachmentsList";
 import candidateContextGet from "@salesforce/apex/CVTransformerApi.candidateContextGet";
 import candidateExportCV from "@salesforce/apex/CVTransformerApi.candidateExportCV";
@@ -18,6 +20,7 @@ export default class CVTransformer extends LightningElement {
   organization_id;
   candidate_id;
   candidate_secret_editable;
+  wiredCandidateContextResult;
 
   external_attachments = null;
   external_candidate_data = null;
@@ -68,14 +71,24 @@ export default class CVTransformer extends LightningElement {
   }
 
   @wire(candidateContextGet, { contact_id: "$recordId" })
-  wiredContext({ data }) {
-    if (!data) return;
+  wiredContext(result) {
+    this.wiredCandidateContextResult = result;
+    if (!result.data) return;
     try {
-      this.external_candidate_data = JSON.parse(data);
+      this.external_candidate_data = JSON.parse(result.data);
       this.postIframeWhenReady();
     } catch (error) {
       console.log(error);
     }
+  }
+
+  @wire(getRecord, {
+    recordId: "$recordId",
+    fields: ["Contact.LastModifiedDate"]
+  })
+  recordChanged() {
+    if (this.wiredCandidateContextResult)
+      refreshApex(this.wiredCandidateContextResult);
   }
 
   @wire(candidateAttachmentsList, { contact_id: "$recordId" })
