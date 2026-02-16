@@ -250,7 +250,9 @@ public with sharing class CVTransformerApi {
     request.setMethod('POST');
     request.setHeader('Authorization', 'Bearer ' + api_key);
     request.setHeader('Content-Type', 'application/json');
-    request.setBody('{}');
+    Map<String, Object> body = new Map<String, Object>();
+    body.put('member_external_id', UserInfo.getUserId());
+    request.setBody(JSON.serialize(body));
 
     Http http = new Http();
     HttpResponse response = http.send(request);
@@ -442,6 +444,7 @@ public with sharing class CVTransformerApi {
       ))
       ? Database.query(
           'SELECT ' +
+            'ContentDocument.LatestPublishedVersion.CreatedDate, ' +
             'ContentDocument.LatestPublishedVersion.Id, ' +
             'ContentDocument.LatestPublishedVersion.Title ' +
             'FROM ContentDocumentLink ' +
@@ -450,6 +453,7 @@ public with sharing class CVTransformerApi {
         )
       : [
           SELECT
+            ContentDocument.LatestPublishedVersion.CreatedDate,
             ContentDocument.LatestPublishedVersion.Id,
             ContentDocument.LatestPublishedVersion.Title
           FROM ContentDocumentLink
@@ -459,6 +463,10 @@ public with sharing class CVTransformerApi {
     for (ContentDocumentLink cdl : cdls) {
       ContentVersion cv = cdl.ContentDocument.LatestPublishedVersion;
       Map<String, String> attachment = new Map<String, String>();
+      attachment.put(
+        'created_at',
+        cv.CreatedDate.formatGMT('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'')
+      );
       attachment.put('id', cv.Id);
       attachment.put('title', cv.Title);
       attachment.put('type', 'Salesforce');
@@ -468,7 +476,9 @@ public with sharing class CVTransformerApi {
     if (contactFields.contains('seven20__cv_file_id__c')) {
       List<SObject> rels = Database.query(
         'SELECT ' +
-          'seven20__External_Id__c, seven20__File_Name__c ' +
+          'CreatedDate, ' +
+          'seven20__External_Id__c, ' +
+          'seven20__File_Name__c ' +
           'FROM seven20__Document__c ' +
           'WHERE seven20__Type__c IN (\'CV\', \'CV (Parser)\', \'CV (PDF Converted)\')' +
           'AND Id IN (' +
@@ -479,6 +489,7 @@ public with sharing class CVTransformerApi {
 
       for (SObject rel : rels) {
         Map<String, String> attachment = new Map<String, String>();
+        attachment.put('created_at', (String) rel.get('CreatedDate'));
         attachment.put('id', (String) rel.get('seven20__External_Id__c'));
         attachment.put('title', (String) rel.get('seven20__File_Name__c'));
         attachment.put('type', 'Seven20AWS');
@@ -694,7 +705,13 @@ public with sharing class CVTransformerApi {
   }
 
   @AuraEnabled
-  public static String candidateExportCV(Id contact_id, String export_type) {
+  public static String candidateExportCV(
+    Id contact_id,
+    String export_type,
+    String format,
+    String language,
+    String watermark
+  ) {
     CVTransformerConfiguration__c config = [
       SELECT Name, api_key__c
       FROM CVTransformerConfiguration__c
@@ -725,10 +742,16 @@ public with sharing class CVTransformerApi {
         nsPrefix('API') +
         '/candidates/' +
         candidate.id +
-        '/pdf?s=' +
+        '/' +
+        format +
+        '?s=' +
         (export_type == 'anonymous'
           ? candidate.secret_anonymous
-          : candidate.secret)
+          : candidate.secret) +
+        '&language=' +
+        language +
+        '&watermark=' +
+        watermark
     );
     request.setMethod('GET');
     Http http = new Http();

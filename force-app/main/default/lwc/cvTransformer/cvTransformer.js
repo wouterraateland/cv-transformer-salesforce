@@ -10,6 +10,8 @@ import configUpsert from "@salesforce/apex/CVTransformerApi.configUpsert";
 import contactDataGet from "@salesforce/apex/CVTransformerApi.contactDataGet";
 import contactTransformCv from "@salesforce/apex/CVTransformerApi.contactTransformCv";
 import contentVersionDataGet from "@salesforce/apex/CVTransformerApi.contentVersionDataGet";
+import EMAIL_FIELD from "@salesforce/schema/User.Email";
+import USER_ID from "@salesforce/user/Id";
 
 export default class CVTransformer extends LightningElement {
   @api recordId;
@@ -25,6 +27,12 @@ export default class CVTransformer extends LightningElement {
   external_attachments = null;
   external_candidate_data = null;
   iframe_ready = false;
+
+  @wire(getRecord, { recordId: USER_ID, fields: [EMAIL_FIELD] })
+  wiredUser({ data, error }) {
+    if (data) this.user_email = data.fields.Email.value;
+    else if (error) console.log(error);
+  }
 
   @wire(contactDataGet, { contact_id: "$recordId" })
   wiredData({ error, data }) {
@@ -117,7 +125,11 @@ export default class CVTransformer extends LightningElement {
   get iframeUrl() {
     return `https://www.cv-transformer.com/candidates/${
       this.data.candidate_id
-    }?s=${this.data.candidate_secret}&context=${this.data.ats}`;
+    }?s=${this.data.candidate_secret}&context=${
+      this.data.ats
+    }&member_external_id=${
+      USER_ID
+    }&member_external_email=${encodeURIComponent(this.user_email)}`;
   }
 
   onSetup() {
@@ -223,7 +235,12 @@ export default class CVTransformer extends LightningElement {
       try {
         await candidateExportCV({
           contact_id: this.recordId,
-          export_type: event.data.export_type
+          export_type: event.data.export_type,
+          format: event.data.format === "docx" ? "docx" : "pdf",
+          language:
+            typeof event.data.language === "string" ? event.data.language : "",
+          watermark:
+            typeof event.data.watermark === "string" ? event.data.watermark : ""
         });
         window.location.reload();
       } catch (error) {
