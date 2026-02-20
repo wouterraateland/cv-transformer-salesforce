@@ -489,7 +489,11 @@ public with sharing class CVTransformerApi {
 
       for (SObject rel : rels) {
         Map<String, String> attachment = new Map<String, String>();
-        attachment.put('created_at', (String) rel.get('CreatedDate'));
+        attachment.put(
+          'created_at',
+          ((Datetime) rel.get('CreatedDate'))
+            .formatGMT('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'')
+        );
         attachment.put('id', (String) rel.get('seven20__External_Id__c'));
         attachment.put('title', (String) rel.get('seven20__File_Name__c'));
         attachment.put('type', 'Seven20AWS');
