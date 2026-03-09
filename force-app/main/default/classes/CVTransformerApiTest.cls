@@ -571,6 +571,14 @@ private class CVTransformerApiTest {
   }
 
   @isTest
+  static void testAtsInferMySolution() {
+    CVTransformerApi.contactFields.add('msf__Place_of_birth__c');
+    String ats = CVTransformerApi.atsInfer();
+    System.assertEquals('MySolution', ats, 'Expected ATS to be MySolution');
+    CVTransformerApi.contactFields.remove('msf__Place_of_birth__c');
+  }
+
+  @isTest
   static void testAtsInferSeven20() {
     CVTransformerApi.contactFields.add('seven20__cv_file_id__c');
     String ats = CVTransformerApi.atsInfer();
@@ -579,11 +587,11 @@ private class CVTransformerApiTest {
   }
 
   @isTest
-  static void testAtsInferMySolution() {
-    CVTransformerApi.contactFields.add('msf__Place_of_birth__c');
+  static void testAtsInferTigris() {
+    CVTransformerApi.contactFields.add('tigris__available_from__c');
     String ats = CVTransformerApi.atsInfer();
-    System.assertEquals('MySolution', ats, 'Expected ATS to be MySolution');
-    CVTransformerApi.contactFields.remove('msf__Place_of_birth__c');
+    System.assertEquals('Tigris', ats, 'Expected ATS to be Tigris');
+    CVTransformerApi.contactFields.remove('tigris__available_from__c');
   }
 
   @isTest

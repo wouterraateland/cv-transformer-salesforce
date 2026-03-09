@@ -122,15 +122,22 @@ public with sharing class CVTransformerApi {
     'seven20__Jobs__r',
     'seven20__Placements__r',
     'seven20__References__r',
-    'seven20__Relationships__r'
+    'seven20__Relationships__r',
+    'Tigris__Interesses__r',
+    'Tigris__Opleidingen_en_certificaten__r',
+    'Tigris__Talen__r',
+    'Tigris__Vaardigheden__r',
+    'Tigris__Werkervaringen__r'
   };
 
   public static String atsInfer() {
-    return contactFields.contains('seven20__cv_file_id__c')
-      ? 'Seven20'
-      : contactFields.contains('msf__Place_of_birth__c')
-          ? 'MySolution'
-          : 'Salesforce';
+    if (contactFields.contains('msf__Place_of_birth__c'))
+      return 'MySolution';
+    if (contactFields.contains('seven20__cv_file_id__c'))
+      return 'Seven20';
+    if (contactFields.contains('tigris__available_from__c'))
+      return 'Tigris';
+    return 'Salesforce';
   }
 
   public class ContactPageData {
