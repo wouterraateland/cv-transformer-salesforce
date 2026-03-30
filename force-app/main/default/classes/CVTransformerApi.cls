@@ -832,6 +832,18 @@ public with sharing class CVTransformerApi {
       update contact;
     }
 
+    // Step 5: Insert new Tigris__Overeenkomst__c record
+    if (contactFields.contains('tigris__available_from__c')) {
+      SObject overeenkomst = Schema.getGlobalDescribe()
+        .get('Tigris__Overeenkomst__c')
+        .newSObject();
+      overeenkomst.put('Name', fileName);
+      overeenkomst.put('Tigris__ContentDocumentId__c', contentDoc.Id);
+      overeenkomst.put('Tigris__Kandidaat__c', contact_id);
+      overeenkomst.put('Tigris__Type_document__c', 'CV');
+      insert overeenkomst;
+    }
+
     return 'Ok';
   }
 }
