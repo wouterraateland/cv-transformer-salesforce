@@ -13,8 +13,8 @@ sf project deploy start
 
 ```
 sf project deploy start \
-  --pre-destructive-changes destructive/destructiveChanges.xml \
-  --manifest destructive/package.xml
+  --pre-destructive-changes manifests/components.xml \
+  --manifest manifests/empty.xml
 ```
 
 ## Running tests

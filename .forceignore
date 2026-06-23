@@ -10,3 +10,7 @@ package.xml
 
 # LWC Jest
 **/__tests__/**
+
+# External Client App Oauth Sets and Policies
+**/extlClntAppGlobalOauthSets/**
+**/extlClntAppOauthPolicies/**
