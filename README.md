@@ -47,4 +47,4 @@ sf package install --package 04tgK000000E03NQAS --installation-key-bypass
 
 Go to https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgK000000E03NQAS
 Follow the post-installation steps described here:
-https://www.cv-transformer.com/en/docs/integrations/salesforce-beta
+https://www.cv-transformer.com/en/docs/integrations/salesforce
