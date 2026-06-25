@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject>
+  <pluralLabel>CVTransformerConfigurations</pluralLabel>
+  <fullName>CVTransformerConfiguration__c</fullName>
+  <description>Configuration for CV-Tranformer org</description>
+  <nameField>
+    <label>organization_id</label>
+    <type>Text</type>
+  </nameField>
+  <enableBulkApi>false</enableBulkApi>
+  <enableSharing>false</enableSharing>
+  <enableStreamingApi>false</enableStreamingApi>
+  <enableHistory>false</enableHistory>
+  <enableActivities>false</enableActivities>
+  <enableSearch>false</enableSearch>
+  <enableFeeds>false</enableFeeds>
+  <enableReports>false</enableReports>
+  <sharingModel>Private</sharingModel>
+  <label>CVTransformerConfiguration</label>
+  <deploymentStatus>Deployed</deploymentStatus>
+</CustomObject>

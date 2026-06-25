@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField>
+    <fullName>api_key__c</fullName>
+    <type>Text</type>
+    <length>64</length>
+    <inlineHelpText />
+    <required>true</required>
+    <unique>true</unique>
+    <externalId>false</externalId>
+    <description>API key</description>
+    <label>api_key</label>
+    <securityClassification>Mission Critical</securityClassification>
+</CustomField>

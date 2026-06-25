@@ -9,7 +9,16 @@
     <name>ApexClass</name>
   </types>
   <types>
+    <members>Contact.cvt_id__c</members>
+    <members>Contact.cvt_secret__c</members>
+    <members>CVTransformerConfiguration__c.api_key__c</members>
+    <members>CVTransformerConfiguration__c.color_scheme__c</members>
+    <members>CVTransformerConfiguration__c.language__c</members>
+    <name>CustomField</name>
+  </types>
+  <types>
     <members>CVTransformerAccess__c</members>
+    <members>CVTransformerConfiguration__c</members>
     <name>CustomObject</name>
   </types>
   <types>
@@ -17,5 +26,9 @@
     <members>cvTransformer</members>
     <members>cvTransformerUtility</members>
     <name>LightningComponentBundle</name>
+  </types>
+  <types>
+    <members>API</members>
+    <name>NamedCredential</name>
   </types>
 </Package>

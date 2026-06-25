@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField>
+    <fullName>color_scheme__c</fullName>
+    <type>Text</type>
+    <length>64</length>
+    <required>false</required>
+    <description>Color scheme</description>
+    <label>theme</label>
+</CustomField>
