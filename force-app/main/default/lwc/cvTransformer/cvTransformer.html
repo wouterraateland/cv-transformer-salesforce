@@ -6,14 +6,14 @@
       size="large"
     ></lightning-spinner>
   </template>
-  <template if:true={iframeUrl}>
+  <template if:true={url}>
     <iframe
       allow="fullscreen"
       allowfullscreen
-      src={iframeUrl}
+      src={url}
       style="
         border: none;
-        border-radius: 3px;
+        border-radius: 12px;
         height: calc(100vh - 240px);
         width: 100%;
       "

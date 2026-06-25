@@ -1,41 +1,46 @@
 public with sharing class CVTransformerApi {
-  @AuraEnabled(cacheable=false)
-  public static String iframeTokenGet() {
-    Auth.JWT jwt = new Auth.JWT();
-    jwt.setIss('cv-transformer-salesforce');
-    jwt.setSub(UserInfo.getUserId());
-    jwt.setAud(URL.getOrgDomainUrl().toExternalForm());
-    jwt.setAdditionalClaims(
-      new Map<String, Object>{ 'org_id' => UserInfo.getOrganizationId() }
-    );
-    Auth.JWS jws = new Auth.JWS(jwt, 'CVTransformerJWT');
-    return jws.getCompactSerialization();
+  private static String base64UrlEncode(Blob input) {
+    return EncodingUtil.base64Encode(input)
+      .replace('+', '-')
+      .replace('/', '_')
+      .replace('=', '');
   }
 
-  @AuraEnabled
-  public static String contactCreate(Id content_version_id) {
-    String token = iframeTokenGet();
+  private static String sign(Map<String, Object> claims, String secret) {
+    String signingInput =
+      base64UrlEncode(Blob.valueOf('{"alg":"HS256","typ":"JWT"}')) +
+      '.' +
+      base64UrlEncode(Blob.valueOf(JSON.serialize(claims)));
 
-    HttpRequest request = new HttpRequest();
-    request.setEndpoint(
-      'callout:' +
-        // 'CVTransformer__' + // Only include in production
-        'API' +
-        '/salesforce-contact' +
-        '?content_version_id=' +
-        content_version_id
+    Blob mac = Crypto.generateMac(
+      'HmacSHA256',
+      Blob.valueOf(signingInput),
+      Blob.valueOf(secret)
     );
-    request.setMethod('POST');
-    request.setHeader('Authorization', token);
 
-    Http http = new Http();
-    HttpResponse response = http.send(request);
-    Integer statusCode = response.getStatusCode();
-    if (statusCode < 200 || statusCode >= 300)
-      throw new AuraHandledException(
-        'Could not create candidate: ' + response.getBody()
+    return signingInput + '.' + base64UrlEncode(mac);
+  }
+
+  @AuraEnabled(cacheable=false)
+  public static String iframeTokenGet() {
+    try {
+      CVTransformerAccess__c access = [
+        SELECT Name
+        FROM CVTransformerAccess__c
+        LIMIT 1
+      ];
+      return sign(
+        new Map<String, Object>{
+          'exp' => (DateTime.now().addMinutes(5).getTime() / 1000),
+          'iat' => DateTime.now().getTime() / 1000,
+          'iss' => 'cv-transformer-salesforce',
+          'org_domain' => URL.getOrgDomainUrl().toExternalForm(),
+          'sub' => UserInfo.getUserId()
+        },
+        access.Name
       );
-
-    return response.getBody();
+    } catch (QueryException e) {
+      return null;
+    }
   }
 }

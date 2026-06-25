@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <ExternalClientApplication xmlns="http://soap.sforce.com/2006/04/metadata">
-    <contactEmail>support@cv-transformer.com</contactEmail>
-    <description
+  <contactEmail>support@cv-transformer.com</contactEmail>
+  <description
   >Enables candidate sync between CV-Transformer and Salesforce</description>
-    <distributionState>Packaged</distributionState>
-    <iconUrl>https://www.cv-transformer.com/images/icon.png</iconUrl>
-    <infoUrl
+  <distributionState>Packaged</distributionState>
+  <iconUrl>https://www.cv-transformer.com/images/icon.png</iconUrl>
+  <infoUrl
   >https://www.cv-transformer.com/en/docs/integrations/salesforce</infoUrl>
-    <isProtected>false</isProtected>
-    <label>CV-Transformer</label>
-    <logoUrl>https://www.cv-transformer.com/images/icon.png</logoUrl>
-    <orgScopedExternalApp>00DgK000000a8rt:cv_transformer</orgScopedExternalApp>
+  <isProtected>false</isProtected>
+  <label>CV-Transformer</label>
+  <logoUrl>https://www.cv-transformer.com/images/icon.png</logoUrl>
+  <orgScopedExternalApp>00DgK000000a8rt:cv_transformer</orgScopedExternalApp>
 </ExternalClientApplication>

@@ -9,13 +9,13 @@
     <name>ApexClass</name>
   </types>
   <types>
+    <members>CVTransformerAccess__c</members>
+    <name>CustomObject</name>
+  </types>
+  <types>
     <members>contentVersionDropdown</members>
     <members>cvTransformer</members>
     <members>cvTransformerUtility</members>
     <name>LightningComponentBundle</name>
-  </types>
-  <types>
-    <members>API</members>
-    <name>NamedCredential</name>
   </types>
 </Package>

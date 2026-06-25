@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <CustomObject>
-  <pluralLabel>CVTransformerConfigurations</pluralLabel>
-  <fullName>CVTransformerConfiguration__c</fullName>
-  <description>Configuration for CV-Tranformer org</description>
+  <pluralLabel>CVTransformerAccesss</pluralLabel>
+  <fullName>CVTransformerAccess__c</fullName>
+  <description>Access for CV-Tranformer org</description>
   <nameField>
-    <label>access_token</label>
+    <label>token</label>
     <type>Text</type>
   </nameField>
   <enableBulkApi>false</enableBulkApi>
@@ -16,6 +16,6 @@
   <enableFeeds>false</enableFeeds>
   <enableReports>false</enableReports>
   <sharingModel>Private</sharingModel>
-  <label>CVTransformerConfiguration</label>
+  <label>CVTransformerAccess</label>
   <deploymentStatus>Deployed</deploymentStatus>
 </CustomObject>

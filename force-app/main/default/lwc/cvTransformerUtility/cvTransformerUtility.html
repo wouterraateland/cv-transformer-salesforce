@@ -6,18 +6,12 @@
       size="large"
     ></lightning-spinner>
   </template>
-  <template lwc:if={isEdit}>
-    <div class="slds-var-m-around_medium">
-      <lightning-file-upload
-        class="file-upload"
-        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
-        label="Upload CV"
-        name="cv"
-        onuploadfinished={onCvUpload}
-      ></lightning-file-upload>
-    </div>
-  </template>
-  <template lwc:if={error}>
-    <p class="slds-var-m-around_medium slds-text-color_error">{error}</p>
+  <template if:true={url}>
+    <iframe
+      allow="fullscreen"
+      allowfullscreen
+      src={url}
+      style="border: none; height: 100%; width: 100%"
+    ></iframe>
   </template>
 </template>

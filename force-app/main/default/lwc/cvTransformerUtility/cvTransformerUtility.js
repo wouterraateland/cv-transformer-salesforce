@@ -1,38 +1,48 @@
-import { LightningElement } from "lwc";
 import { NavigationMixin } from "lightning/navigation";
-import contactCreate from "@salesforce/apex/CVTransformerApi.contactCreate";
+import {
+  getEnclosingUtilityId,
+  minimizeUtility
+} from "lightning/platformUtilityBarApi";
+import { LightningElement } from "lwc";
+import iframeTokenGet from "@salesforce/apex/CVTransformerApi.iframeTokenGet";
+import locale from "@salesforce/i18n/lang";
 
 export default class CVTransformerUtility extends NavigationMixin(
   LightningElement
 ) {
-  error;
-  state = "edit";
+  url = null;
 
   get isLoading() {
-    return this.state === "loading";
+    return this.url === null;
   }
 
-  get isEdit() {
-    return this.state === "edit";
+  connectedCallback() {
+    iframeTokenGet().then((token) => {
+      this.url = token
+        ? "https://www.cv-transformer.com/salesforce/new-candidate?" +
+          new URLSearchParams({ locale, token })
+        : "https://www.cv-transformer.com/salesforce/onboard?" +
+          new URLSearchParams({ locale });
+    });
+    this.messageHandler = this.handleMessage.bind(this);
+    window.addEventListener("message", this.messageHandler);
   }
 
-  async onCvUpload(event) {
-    const file = event.detail.files[0];
-    if (!file) return;
+  disconnectedCallback() {
+    window.removeEventListener("message", this.messageHandler);
+  }
 
-    this.state = "loading";
-    try {
-      const contact_id = await contactCreate({
-        content_version_id: file.contentVersionId
-      });
-      this[NavigationMixin.Navigate]({
-        attributes: { actionName: "view", recordId: contact_id },
-        type: "standard__recordPage"
-      });
-      this.error = null;
-    } catch (error) {
-      this.error = error.body.message;
-    }
-    this.state = "edit";
+  handleMessage(event) {
+    if (
+      event.origin !== "https://www.cv-transformer.com" ||
+      event.data.type !== "navigate"
+    )
+      return;
+
+    this[NavigationMixin.Navigate]({
+      attributes: { actionName: "view", recordId: event.data.recordId },
+      type: "standard__recordPage"
+    });
+    getEnclosingUtilityId().then((utilityId) => minimizeUtility(utilityId));
   }
 }
